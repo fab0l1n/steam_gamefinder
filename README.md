@@ -13,15 +13,21 @@ everyone wants, what's on sale, and who already owns it.
   price (in your store region and Steam language).
 - **Your highlights**: green background = in your library, blue = on your wishlist, with a small indicator
   on the cover (same colours as Augmented Steam).
-- **Wishlisted by / owned by**: member avatars on every row.
+- **Avatar stacks** on every row: the *owner stack* (who has it in their library, green) and the
+  *wishlist stack* (who wants it, blue); up to 5 round avatars, the total count when there are more.
+- **Review column**: rating icon (thumb up/down, `~` for mixed) with percent positive and number of reviews.
 - **Member status strip**: every member with what could be loaded (wishlist and library counts, hidden,
   needs sign-in, cached, failed) and why. Click a member to see only their wishlist.
 - **Hover preview**: screenshot, reviews, tags, description, who wishlisted it since when, who owns it
   and how long they played.
 - **Sorting** (most wishlisted, discount, price, rating, release date, name) and toggles for DLC/hardware,
   hiding games you own, and loading libraries.
+- **Filter sidebar** like Steam search with Augmented Steam: review score range, review count, discount
+  percent, maximum price, and user tags (tick to require, `−` to exclude; counts update with the other filters).
+  The view is wider than Steam's group column (up to 1240 px) to fit the sidebar; below 1100 px the
+  filters move above the list.
 
-Not yet: co-op player counts (co-optimus) and the filter panel. See the concept doc's roadmap.
+Not yet: co-op player counts (co-optimus). See the concept doc's roadmap.
 
 ## Install for development
 
@@ -87,10 +93,11 @@ A member's wishlist and library follow their Steam **Game details** privacy sett
 ```
 src/entrypoints/background.ts        message handler (validates requests from our content script)
 src/entrypoints/group.content/       tab injection + mounting the UI
-src/components/                      Svelte UI (App, MemberStrip, GameRow, HoverPreview)
+src/components/                      Svelte UI (App, MemberStrip, GameRow, AvatarStack, FilterPanel, HoverPreview)
 src/lib/steam/                       parsers for Steam responses (pure, unit-tested)
 src/lib/loader.ts                    load flow and per-member status
-src/lib/aggregate.ts                 merge, sort, filter
+src/lib/aggregate.ts                 merge, sort, toolbar options
+src/lib/filters.ts                   sidebar filters, tag counts, price steps
 src/lib/cache.ts                     TTL cache over storage.local
 tests/                               Vitest tests with synthetic fixtures
 harness/                             mock-data page for UI screenshots

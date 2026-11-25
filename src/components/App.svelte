@@ -1,12 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { applyView, SORT_LABELS, type SortKey } from '../lib/aggregate';
+  import { EMPTY_FILTERS, filtersActive, matchesFilters, priceFormatter, priceSteps, type Filters } from '../lib/filters';
   import { DEFAULT_SETTINGS, type DataSource, type UiSettings } from '../lib/source';
   import type { GameRow, LoadSnapshot, Member } from '../lib/types';
   import { icons } from './icons';
   import MemberStrip from './MemberStrip.svelte';
   import GameRowView from './GameRow.svelte';
   import HoverPreview from './HoverPreview.svelte';
+  import FilterPanel from './FilterPanel.svelte';
 
   let { source }: { source: DataSource } = $props();
 
@@ -18,9 +20,16 @@
   let tags = $state<Record<number, string>>({});
   let hover = $state<{ row: GameRow; rect: DOMRect } | null>(null);
   let now = $state(Date.now());
+  let filters = $state<Filters>({ ...EMPTY_FILTERS });
 
   const members = $derived(new Map<string, Member>((snap?.members ?? []).map((m) => [m.steamid, m])));
-  const rows = $derived(snap ? applyView(snap.rows, { ...settings, member: memberFilter }) : []);
+  /** Sorted rows after the toolbar options and member filter. */
+  const baseRows = $derived(snap ? applyView(snap.rows, { ...settings, member: memberFilter }) : []);
+  /** Rows for the tag counts: every sidebar filter except tags. */
+  const tagRows = $derived(baseRows.filter((r) => matchesFilters(r, filters, { ignoreTags: true })));
+  const rows = $derived(tagRows.filter((r) => matchesFilters(r, filters)));
+  const steps = $derived(priceSteps(snap?.rows ?? []));
+  const fmt = $derived(priceFormatter(snap?.rows ?? []));
   const visibleMembers = $derived((snap?.members ?? []).filter((m) => m.wishlist.state === 'ok').length);
   const sortKeys = Object.keys(SORT_LABELS) as SortKey[];
 
@@ -99,6 +108,8 @@
     />
   {/if}
 
+  <div class="layout">
+  <div class="results">
   <div class="toolbar">
     <label>
       Sort by
@@ -139,6 +150,7 @@
         <span class="hint">To share it: Steam → Edit Profile → Privacy Settings → Game details: Public.</span>
       {:else if snap.rows.length}
         No games match the current options.
+        {#if filtersActive(filters)}<button class="link" onclick={() => (filters = { ...EMPTY_FILTERS })}>Clear filters</button>{/if}
       {:else}
         No wishlists could be read. The member strip above shows why for each member.
       {/if}
@@ -154,6 +166,10 @@
   {#if busy && snap?.phase !== 'done'}
     <div class="loading"><span class="spinner"></span> {snap?.message ?? 'Loading…'}</div>
   {/if}
+  </div>
+
+  <FilterPanel bind:filters {tagRows} tagNames={tags} {steps} {fmt} />
+  </div>
 
   {#if hover}
     <HoverPreview row={hover.row} rect={hover.rect} {members} {tags} />
@@ -172,6 +188,29 @@
     display: block;
     padding: 14px 0 24px;
     line-height: 1.35;
+    /* Wider than Steam's 948px group column (room for the filter sidebar), centred on the page.
+       Margins instead of transform, so the fixed-position hover preview keeps the viewport as reference. */
+    box-sizing: border-box;
+    width: min(1240px, calc(100vw - 40px));
+    margin-left: calc(50% - min(620px, calc(50vw - 20px)));
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 250px;
+    gap: 16px;
+    align-items: start;
+    margin-top: 10px;
+  }
+  .results {
+    min-width: 0;
+  }
+  @media (max-width: 1100px) {
+    .layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .layout > :global(.panel) {
+      order: -1;
+    }
   }
   .head {
     display: flex;
@@ -223,7 +262,7 @@
     align-items: center;
     background: rgba(0, 0, 0, 0.2);
     padding: 8px 10px;
-    margin: 10px 0 6px;
+    margin: 0 0 6px;
     color: #8f98a0;
   }
   .toolbar label {

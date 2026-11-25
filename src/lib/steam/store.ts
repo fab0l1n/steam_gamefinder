@@ -23,7 +23,7 @@ export function buildGetItemsUrl(appids: number[], language: string, country: st
       include_reviews: true,
       include_basic_info: true,
       include_screenshots: true,
-      include_tag_count: 8,
+      include_tag_count: 20,
     },
   };
   return (

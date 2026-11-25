@@ -1,0 +1,102 @@
+/** Sidebar filters (review score/count, discount, price, user tags). Pure, unit-tested. */
+import type { GameRow } from './types';
+
+export interface Filters {
+  /** Percent positive, 0..100. Full range = any. */
+  reviewMin: number;
+  reviewMax: number;
+  countMin: number | null;
+  countMax: number | null;
+  discountMin: number | null;
+  discountMax: number | null;
+  /** In the currency's minor unit; null = any price, 0 = free only. */
+  priceMaxCents: number | null;
+  tagsInclude: number[];
+  tagsExclude: number[];
+}
+
+export const EMPTY_FILTERS: Filters = {
+  reviewMin: 0,
+  reviewMax: 100,
+  countMin: null,
+  countMax: null,
+  discountMin: null,
+  discountMax: null,
+  priceMaxCents: null,
+  tagsInclude: [],
+  tagsExclude: [],
+};
+
+export function filtersActive(f: Filters): boolean {
+  return (
+    f.reviewMin > 0 ||
+    f.reviewMax < 100 ||
+    f.countMin != null ||
+    f.countMax != null ||
+    f.discountMin != null ||
+    f.discountMax != null ||
+    f.priceMaxCents != null ||
+    f.tagsInclude.length > 0 ||
+    f.tagsExclude.length > 0
+  );
+}
+
+export function matchesFilters(row: GameRow, f: Filters, opts: { ignoreTags?: boolean } = {}): boolean {
+  const { review, price, tagids } = row.info;
+
+  if (f.reviewMin > 0 || f.reviewMax < 100) {
+    if (!review || review.percent < f.reviewMin || review.percent > f.reviewMax) return false;
+  }
+  if (f.countMin != null && (!review || review.count < f.countMin)) return false;
+  if (f.countMax != null && (review?.count ?? 0) > f.countMax) return false;
+
+  const pct = price?.discountPct ?? 0;
+  if (f.discountMin != null && pct < f.discountMin) return false;
+  if (f.discountMax != null && pct > f.discountMax) return false;
+
+  if (f.priceMaxCents != null) {
+    if (!price || price.finalCents == null || price.finalCents > f.priceMaxCents) return false;
+  }
+
+  if (!opts.ignoreTags) {
+    if (f.tagsInclude.some((t) => !tagids.includes(t))) return false;
+    if (f.tagsExclude.some((t) => tagids.includes(t))) return false;
+  }
+  return true;
+}
+
+/** How many of `rows` carry each tag, most common first. */
+export function tagCounts(rows: GameRow[]): [number, number][] {
+  const counts = new Map<number, number>();
+  for (const r of rows) for (const t of r.info.tagids) counts.set(t, (counts.get(t) ?? 0) + 1);
+  return [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+}
+
+/**
+ * Price slider stops in minor units, ending with Infinity (= any price). Scaled to the currency:
+ * euros get 5, 10, 15 …; currencies with bigger numbers (yen, rubles) get the same stops × 10^n.
+ */
+export function priceSteps(rows: GameRow[]): number[] {
+  const prices = rows
+    .map((r) => r.info.price?.finalCents)
+    .filter((c): c is number => c != null && c > 0)
+    .sort((a, b) => a - b);
+  const median = prices.length ? prices[Math.floor(prices.length / 2)] / 100 : 20;
+  const scale = Math.pow(10, Math.max(0, Math.floor(Math.log10(Math.max(median, 1))) - 1));
+  return [0, 5, 10, 15, 20, 25, 30, 40, 50, 60, 70].map((v) => v * scale * 100).concat(Infinity);
+}
+
+/** Formats whole amounts like the store does ("10€", "$10", "10 zł"), learned from a sample price. */
+export function priceFormatter(rows: GameRow[]): (cents: number) => string {
+  const sample = rows.find((r) => r.info.price && !r.info.price.isFree && r.info.price.final)?.info.price?.final;
+  const m = sample?.match(/^(.*?)(\d[\d.,\s]*\d|\d)(.*)$/);
+  const prefix = m ? m[1] : '';
+  const suffix = m ? m[3] : '€';
+  return (cents) => `${prefix}${Math.round(cents / 100)}${suffix}`;
+}
+
+export function priceLabel(cents: number | null, fmt: (cents: number) => string): string {
+  if (cents == null || cents === Infinity) return 'Any Price';
+  if (cents === 0) return 'Free';
+  return `Under ${fmt(cents)}`;
+}
