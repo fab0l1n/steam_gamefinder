@@ -1,0 +1,313 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { applyView, SORT_LABELS, type SortKey } from '../lib/aggregate';
+  import { DEFAULT_SETTINGS, type DataSource, type UiSettings } from '../lib/source';
+  import type { GameRow, LoadSnapshot, Member } from '../lib/types';
+  import { icons } from './icons';
+  import MemberStrip from './MemberStrip.svelte';
+  import GameRowView from './GameRow.svelte';
+  import HoverPreview from './HoverPreview.svelte';
+
+  let { source }: { source: DataSource } = $props();
+
+  let snap = $state<LoadSnapshot | null>(null);
+  let settings = $state<UiSettings>({ ...DEFAULT_SETTINGS });
+  let settingsReady = $state(false);
+  let memberFilter = $state<string | null>(null);
+  let busy = $state(false);
+  let tags = $state<Record<number, string>>({});
+  let hover = $state<{ row: GameRow; rect: DOMRect } | null>(null);
+  let now = $state(Date.now());
+
+  const members = $derived(new Map<string, Member>((snap?.members ?? []).map((m) => [m.steamid, m])));
+  const rows = $derived(snap ? applyView(snap.rows, { ...settings, member: memberFilter }) : []);
+  const visibleMembers = $derived((snap?.members ?? []).filter((m) => m.wishlist.state === 'ok').length);
+  const sortKeys = Object.keys(SORT_LABELS) as SortKey[];
+
+  function ago(t: number | null): string {
+    if (!t) return '';
+    const min = Math.round((now - t) / 60000);
+    if (min < 1) return 'just now';
+    if (min < 60) return `${min} min ago`;
+    const h = Math.round(min / 60);
+    return h < 24 ? `${h} h ago` : `${Math.round(h / 24)} d ago`;
+  }
+
+  async function run(force: boolean) {
+    if (busy) return;
+    busy = true;
+    hover = null;
+    try {
+      await source.load(force, $state.snapshot(settings), (s) => (snap = s));
+    } catch (e) {
+      snap = snap
+        ? { ...snap, phase: 'error', error: String(e) }
+        : { phase: 'error', message: String(e), error: String(e), groupName: '', members: [], rows: [], viewer: { steamid: null, loggedIn: false }, updatedAt: null };
+    } finally {
+      busy = false;
+    }
+  }
+
+  function setLoadLibraries(v: boolean) {
+    settings.loadLibraries = v;
+    run(false);
+  }
+
+  let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+  function onRowEnter(row: GameRow, el: HTMLElement) {
+    clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(() => (hover = { row, rect: el.getBoundingClientRect() }), 250);
+  }
+  function onRowLeave() {
+    clearTimeout(hoverTimer);
+    hover = null;
+  }
+
+  $effect(() => {
+    const s = $state.snapshot(settings);
+    if (settingsReady) source.saveSettings(s);
+  });
+
+  onMount(() => {
+    const tick = setInterval(() => (now = Date.now()), 30_000);
+    source.getSettings().then((s) => {
+      settings = { ...DEFAULT_SETTINGS, ...s };
+      settingsReady = true;
+      run(false);
+    });
+    source.tags().then((t) => (tags = t));
+    return () => clearInterval(tick);
+  });
+</script>
+
+<div class="sgf" onscroll={onRowLeave}>
+  <div class="head">
+    <h2>Wishlists{#if snap?.groupName}<span class="group">&nbsp;· {snap.groupName}</span>{/if}</h2>
+    <div class="updated">
+      {#if snap?.updatedAt}Updated {ago(snap.updatedAt)}{/if}
+      <button class="btn" onclick={() => run(true)} disabled={busy} title="Reload everything from Steam, ignoring the cache">
+        {@html icons.refresh} Refresh
+      </button>
+    </div>
+  </div>
+
+  {#if snap && snap.members.length}
+    <MemberStrip
+      members={snap.members}
+      selected={memberFilter}
+      onselect={(id) => (memberFilter = memberFilter === id ? null : id)}
+    />
+  {/if}
+
+  <div class="toolbar">
+    <label>
+      Sort by
+      <select bind:value={settings.sort}>
+        {#each sortKeys as k (k)}<option value={k}>{SORT_LABELS[k]}</option>{/each}
+      </select>
+    </label>
+    <label><input type="checkbox" bind:checked={settings.includeExtras} /> Include DLC &amp; hardware</label>
+    <label><input type="checkbox" bind:checked={settings.hideOwned} /> Hide games I own</label>
+    <label title="Reads each member's games page (about 1 MB each, cached for a day). Needs you to be signed in to Steam.">
+      <input type="checkbox" checked={settings.loadLibraries} onchange={(e) => setLoadLibraries(e.currentTarget.checked)} disabled={busy} />
+      Load libraries
+    </label>
+  </div>
+
+  <div class="summary" class:error={snap?.phase === 'error'}>
+    {#if !snap}
+      Starting…
+    {:else if snap.phase === 'done'}
+      {#if memberFilter}
+        Showing {rows.length} games wishlisted by {members.get(memberFilter)?.name ?? 'this member'} ·
+        <button class="link" onclick={() => (memberFilter = null)}>show all</button>
+      {:else}
+        Showing {rows.length} of {snap.rows.length} games from the wishlists of {visibleMembers} of {snap.members.length} members
+      {/if}
+      {#if snap.error}<span class="warn">&nbsp;· {snap.error}</span>{/if}
+    {:else}
+      {snap.message}
+    {/if}
+  </div>
+
+  {#if snap?.phase === 'done' && rows.length === 0}
+    {@const fm = memberFilter ? members.get(memberFilter) : undefined}
+    <div class="empty">
+      {#if fm && fm.wishlist.state !== 'ok'}
+        <strong>{fm.name}'s wishlist couldn't be read.</strong><br />
+        {fm.wishlist.error ?? 'Steam returned nothing.'}<br />
+        <span class="hint">To share it: Steam → Edit Profile → Privacy Settings → Game details: Public.</span>
+      {:else if snap.rows.length}
+        No games match the current options.
+      {:else}
+        No wishlists could be read. The member strip above shows why for each member.
+      {/if}
+    </div>
+  {/if}
+
+  <div class="list">
+    {#each rows as row (row.info.appid)}
+      <GameRowView {row} {members} onenter={onRowEnter} onleave={onRowLeave} />
+    {/each}
+  </div>
+
+  {#if busy && snap?.phase !== 'done'}
+    <div class="loading"><span class="spinner"></span> {snap?.message ?? 'Loading…'}</div>
+  {/if}
+
+  {#if hover}
+    <HoverPreview row={hover.row} rect={hover.rect} {members} {tags} />
+  {/if}
+
+  <div class="footer">Steam Gamefinder · data from Steam; prices for your store region</div>
+</div>
+
+<style>
+  .sgf {
+    --owned: 0, 206, 103;
+    --wish: 4, 145, 191;
+    font-family: 'Motiva Sans', Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    color: #c6d4df;
+    display: block;
+    padding: 14px 0 24px;
+    line-height: 1.35;
+  }
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 300;
+    color: #fff;
+    letter-spacing: 0.02em;
+  }
+  .group {
+    color: #8f98a0;
+    font-size: 16px;
+  }
+  .updated {
+    color: #8f98a0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .btn {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    background: rgba(103, 193, 245, 0.2);
+    color: #67c1f5;
+    border: 0;
+    border-radius: 2px;
+    padding: 5px 10px;
+    font: inherit;
+    cursor: pointer;
+  }
+  .btn:hover:not(:disabled) {
+    background: linear-gradient(-60deg, #417a9b 5%, #67c1f5 95%);
+    color: #fff;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 8px 10px;
+    margin: 10px 0 6px;
+    color: #8f98a0;
+  }
+  .toolbar label {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    cursor: pointer;
+  }
+  select {
+    background: rgba(103, 193, 245, 0.15);
+    color: #67c1f5;
+    border: 0;
+    border-radius: 2px;
+    padding: 4px 6px;
+    font: inherit;
+  }
+  option {
+    background: #1b2838;
+    color: #c6d4df;
+  }
+  input[type='checkbox'] {
+    accent-color: #67c1f5;
+    margin: 0;
+  }
+  .summary {
+    color: #8f98a0;
+    margin: 6px 2px 8px;
+    min-height: 18px;
+  }
+  .summary.error,
+  .warn {
+    color: #e0b33c;
+  }
+  .link {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: #67c1f5;
+    font: inherit;
+    cursor: pointer;
+  }
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .empty {
+    padding: 30px;
+    text-align: center;
+    color: #8f98a0;
+    background: rgba(0, 0, 0, 0.2);
+  }
+  .empty strong {
+    color: #c6d4df;
+    font-weight: 500;
+  }
+  .hint {
+    display: inline-block;
+    margin-top: 8px;
+    color: #67c1f5;
+  }
+  .loading {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 18px 4px;
+    color: #8f98a0;
+  }
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(103, 193, 245, 0.3);
+    border-top-color: #67c1f5;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .footer {
+    margin-top: 16px;
+    color: #556772;
+    font-size: 11px;
+  }
+</style>

@@ -1,0 +1,25 @@
+/** Typed messages between the content script and the background worker. */
+import type { GameInfo, ViewerStoreData, WishlistEntry } from './types';
+
+export type BgRequest =
+  | { type: 'viewerStore' }
+  | { type: 'wishlist'; steamid: string; tryLogin: boolean }
+  | { type: 'storeItems'; appids: number[]; language: string; country: string | null }
+  | { type: 'tags'; language: string };
+
+export interface WishlistResult {
+  entries: WishlistEntry[];
+  /** 'public' = keyless call worked, 'login' = needed the viewer's Steam login, null = nothing visible. */
+  via: 'public' | 'login' | null;
+  /** Whether a logged-in attempt was possible (viewer signed in to the store). */
+  loginAvailable: boolean;
+}
+
+export type BgResponseMap = {
+  viewerStore: ViewerStoreData;
+  wishlist: WishlistResult;
+  storeItems: GameInfo[];
+  tags: Record<number, string>;
+};
+
+export type BgEnvelope<T> = { ok: true; data: T } | { ok: false; error: string };

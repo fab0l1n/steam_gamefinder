@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Steam Gamefinder – UI harness</title>
+    <style>
+      body {
+        margin: 0;
+        background: #1b2838 radial-gradient(ellipse at top, #2a3f5a 0%, #1b2838 60%);
+        min-height: 100vh;
+      }
+      .fake-tabs {
+        width: 948px;
+        margin: 0 auto;
+        padding-top: 24px;
+        display: flex;
+        gap: 4px;
+        font: 14px Arial, sans-serif;
+      }
+      .fake-tabs span {
+        padding: 8px 14px;
+        color: #8f98a0;
+        background: rgba(0, 0, 0, 0.2);
+      }
+      .fake-tabs span.active {
+        color: #fff;
+        background: rgba(103, 193, 245, 0.2);
+      }
+      #app {
+        width: 948px;
+        margin: 0 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="fake-tabs">
+      <span>Overview</span><span>Discussions</span><span>Events</span><span>Members</span><span class="active">Wishlists</span><span>Comments</span>
+    </div>
+    <div id="app"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
