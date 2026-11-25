@@ -1,5 +1,6 @@
 /** What the UI needs from the outside world. The extension and the UI harness each provide one. */
 import type { SortKey } from './aggregate';
+import type { Preset } from './selection';
 import type { LoadSnapshot } from './types';
 
 export interface UiSettings {
@@ -21,4 +22,7 @@ export interface DataSource {
   tags(): Promise<Record<number, string>>;
   getSettings(): Promise<UiSettings>;
   saveSettings(s: UiSettings): Promise<void>;
+  /** Member presets for this group. */
+  getPresets(): Promise<Preset[]>;
+  savePresets(p: Preset[]): Promise<void>;
 }

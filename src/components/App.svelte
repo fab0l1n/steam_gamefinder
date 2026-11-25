@@ -9,13 +9,18 @@
   import GameRowView from './GameRow.svelte';
   import HoverPreview from './HoverPreview.svelte';
   import FilterPanel from './FilterPanel.svelte';
+  import Dialog from './Dialog.svelte';
+  import { clickMember, isAllSelected, newPreset, presetSelection, type Preset } from '../lib/selection';
 
   let { source }: { source: DataSource } = $props();
 
   let snap = $state<LoadSnapshot | null>(null);
   let settings = $state<UiSettings>({ ...DEFAULT_SETTINGS });
   let settingsReady = $state(false);
-  let memberFilter = $state<string | null>(null);
+  /** Selected members; empty = all. */
+  let selection = $state<string[]>([]);
+  let presets = $state<Preset[]>([]);
+  let dialog = $state<{ kind: 'add' } | { kind: 'remove'; preset: Preset } | null>(null);
   let busy = $state(false);
   let tags = $state<Record<number, string>>({});
   let hover = $state<{ row: GameRow; rect: DOMRect } | null>(null);
@@ -23,8 +28,15 @@
   let filters = $state<Filters>({ ...EMPTY_FILTERS });
 
   const members = $derived(new Map<string, Member>((snap?.members ?? []).map((m) => [m.steamid, m])));
+  const allIds = $derived((snap?.members ?? []).map((m) => m.steamid));
+  const effective = $derived(selection.length ? allIds.filter((id) => selection.includes(id)) : allIds);
+  const allSelected = $derived(effective.length === 0 || isAllSelected(effective, allIds));
+  const selectedNames = $derived.by(() => {
+    const names = effective.map((id) => members.get(id)?.name ?? id);
+    return names.length > 3 ? `${names.slice(0, 3).join(', ')} +${names.length - 3}` : names.join(', ');
+  });
   /** Sorted rows after the toolbar options and member filter. */
-  const baseRows = $derived(snap ? applyView(snap.rows, { ...settings, member: memberFilter }) : []);
+  const baseRows = $derived(snap ? applyView(snap.rows, { ...settings, members: allSelected ? null : effective }) : []);
   /** Rows for the tag counts: every sidebar filter except tags. */
   const tagRows = $derived(baseRows.filter((r) => matchesFilters(r, filters, { ignoreTags: true })));
   const rows = $derived(tagRows.filter((r) => matchesFilters(r, filters)));
@@ -57,6 +69,14 @@
     }
   }
 
+  function select(next: string[]) {
+    selection = isAllSelected(next, allIds) ? [] : next;
+  }
+  function savePresets(next: Preset[]) {
+    presets = next;
+    source.savePresets($state.snapshot(next));
+  }
+
   function setLoadLibraries(v: boolean) {
     settings.loadLibraries = v;
     run(false);
@@ -85,6 +105,7 @@
       run(false);
     });
     source.tags().then((t) => (tags = t));
+    source.getPresets().then((p) => (presets = p));
     return () => clearInterval(tick);
   });
 </script>
@@ -103,8 +124,14 @@
   {#if snap && snap.members.length}
     <MemberStrip
       members={snap.members}
-      selected={memberFilter}
-      onselect={(id) => (memberFilter = memberFilter === id ? null : id)}
+      selected={effective}
+      {allSelected}
+      {presets}
+      onselect={(id, additive) => select(clickMember(effective, id, additive, allIds))}
+      onall={() => select([])}
+      onpreset={(p) => select(presetSelection(p, allIds))}
+      onadd={() => (dialog = { kind: 'add' })}
+      onremove={(p) => (dialog = { kind: 'remove', preset: p })}
     />
   {/if}
 
@@ -129,9 +156,9 @@
     {#if !snap}
       Starting…
     {:else if snap.phase === 'done'}
-      {#if memberFilter}
-        Showing {rows.length} games wishlisted by {members.get(memberFilter)?.name ?? 'this member'} ·
-        <button class="link" onclick={() => (memberFilter = null)}>show all</button>
+      {#if !allSelected}
+        Showing {rows.length} games wishlisted by {selectedNames} ·
+        <button class="link" onclick={() => select([])}>show all</button>
       {:else}
         Showing {rows.length} of {snap.rows.length} games from the wishlists of {visibleMembers} of {snap.members.length} members
       {/if}
@@ -145,7 +172,7 @@
   </div>
 
   {#if snap?.phase === 'done' && rows.length === 0}
-    {@const fm = memberFilter ? members.get(memberFilter) : undefined}
+    {@const fm = !allSelected && effective.length === 1 ? members.get(effective[0]) : undefined}
     <div class="empty">
       {#if fm && fm.wishlist.state !== 'ok'}
         <strong>{fm.name}'s wishlist couldn't be read.</strong><br />
@@ -176,6 +203,34 @@
 
   {#if hover}
     <HoverPreview row={hover.row} rect={hover.rect} {members} {tags} />
+  {/if}
+
+  {#if dialog?.kind === 'add'}
+    <Dialog
+      title="New preset"
+      message={`Save the current selection (${allSelected ? 'all members' : selectedNames}) as a preset.`}
+      input
+      placeholder="Preset name, e.g. Friday co-op"
+      confirmLabel="Save"
+      onconfirm={(name) => {
+        savePresets([...presets, newPreset(name, allSelected ? allIds : effective)]);
+        dialog = null;
+      }}
+      oncancel={() => (dialog = null)}
+    />
+  {:else if dialog?.kind === 'remove'}
+    {@const p = dialog.preset}
+    <Dialog
+      title="Remove preset"
+      message={`Remove the preset “${p.name}”? This can't be undone.`}
+      confirmLabel="Remove"
+      danger
+      onconfirm={() => {
+        savePresets(presets.filter((x) => x.id !== p.id));
+        dialog = null;
+      }}
+      oncancel={() => (dialog = null)}
+    />
   {/if}
 
   <div class="footer">

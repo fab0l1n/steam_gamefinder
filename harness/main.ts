@@ -1,6 +1,7 @@
 import { mount } from 'svelte';
 import App from '../src/components/App.svelte';
 import { buildRows } from '../src/lib/aggregate';
+import type { Preset } from '../src/lib/selection';
 import { DEFAULT_SETTINGS, type DataSource, type UiSettings } from '../src/lib/source';
 import type { GameInfo, LoadSnapshot, Member } from '../src/lib/types';
 
@@ -95,6 +96,7 @@ const done: LoadSnapshot = {
 };
 
 let settings: UiSettings = { ...DEFAULT_SETTINGS };
+let presets: Preset[] = [{ id: 'p1', name: 'Co-op crew', steamids: [ME, VITU, KAI] }];
 const source: DataSource = {
   async load(_force, _s, emit) {
     emit({ ...done, phase: 'wishlists', message: 'Loaded 1 of 3 members…', rows: [] });
@@ -109,6 +111,12 @@ const source: DataSource = {
   },
   async saveSettings(s) {
     settings = s;
+  },
+  async getPresets() {
+    return presets;
+  },
+  async savePresets(p) {
+    presets = p;
   },
 };
 

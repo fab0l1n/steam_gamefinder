@@ -20,7 +20,11 @@ everyone wants, what's on sale, and who already owns it.
   Steam lists co-op but co-optimus has no entry. Details in the tooltip and hover preview.
 - **Review column**: rating icon (thumb up/down, `~` for mixed) with percent positive and number of reviews.
 - **Member status strip**: every member with what could be loaded (wishlist and library counts, hidden,
-  needs sign-in, cached, failed) and why. Click a member to see only their wishlist.
+  needs sign-in, cached, failed) and why.
+- **Member selection**: click a member to see only their wishlist; Ctrl+click (⌘ on Mac) adds or removes
+  members (the list shows games wishlisted by any selected member).
+- **Presets** after the members: *All*, your saved presets, and *+* to save the current selection under
+  a name. Right-click a saved preset to remove it (asks first). Stored per group in your browser.
 - **Hover preview**: screenshot, reviews, tags, description, who wishlisted it since when, who owns it
   and how long they played.
 - **Sorting** (most wishlisted, discount, price, rating, release date, name) and toggles for DLC/hardware,
@@ -97,11 +101,12 @@ A member's wishlist and library follow their Steam **Game details** privacy sett
 ```
 src/entrypoints/background.ts        message handler (validates requests from our content script)
 src/entrypoints/group.content/       tab injection + mounting the UI
-src/components/                      Svelte UI (App, MemberStrip, GameRow, AvatarStack, FilterPanel, HoverPreview)
+src/components/                      Svelte UI (App, MemberStrip, GameRow, AvatarStack, FilterPanel, HoverPreview, Dialog)
 src/lib/steam/                       parsers for Steam responses (pure, unit-tested)
 src/lib/loader.ts                    load flow and per-member status
 src/lib/aggregate.ts                 merge, sort, toolbar options
 src/lib/filters.ts                   sidebar filters, tag counts, price steps
+src/lib/selection.ts                 member selection and presets
 src/lib/cache.ts                     TTL cache over storage.local
 tests/                               Vitest tests with synthetic fixtures
 harness/                             mock-data page for UI screenshots

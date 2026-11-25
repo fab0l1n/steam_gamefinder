@@ -1,12 +1,32 @@
 <script lang="ts">
+  import { presetSelection, sameSelection, type Preset } from '../lib/selection';
   import type { Member, SourceStatus } from '../lib/types';
   import { icons } from './icons';
 
   let {
     members,
     selected,
+    allSelected,
+    presets,
     onselect,
-  }: { members: Member[]; selected: string | null; onselect: (steamid: string) => void } = $props();
+    onall,
+    onpreset,
+    onadd,
+    onremove,
+  }: {
+    members: Member[];
+    selected: string[];
+    allSelected: boolean;
+    presets: Preset[];
+    /** `additive` = Ctrl/⌘ held: add or remove instead of replacing the selection. */
+    onselect: (steamid: string, additive: boolean) => void;
+    onall: () => void;
+    onpreset: (p: Preset) => void;
+    onadd: () => void;
+    onremove: (p: Preset) => void;
+  } = $props();
+
+  const allIds = $derived(members.map((m) => m.steamid));
 
   const VIA: Record<string, string> = { public: 'public', login: 'via your login', store: 'yours, via your store login' };
 
@@ -43,7 +63,7 @@
 
   function title(m: Member): string {
     const privacy = m.profilePrivacy === 'unknown' ? '' : `Profile: ${m.profilePrivacy}\n`;
-    return `${m.name}${m.isViewer ? ' (you)' : ''}\n${privacy}${describe('Wishlist', m.wishlist)}\n${describe('Library', m.library)}${m.wishlist.state === 'hidden' ? '\n\nFix: Steam → Edit Profile → Privacy Settings → Game details: Public.' : ''}\n\nClick to show only this member's wishlist.`;
+    return `${m.name}${m.isViewer ? ' (you)' : ''}\n${privacy}${describe('Wishlist', m.wishlist)}\n${describe('Library', m.library)}${m.wishlist.state === 'hidden' ? '\n\nFix: Steam → Edit Profile → Privacy Settings → Game details: Public.' : ''}\n\nClick: only this member. Ctrl+click (⌘ on Mac): add or remove.`;
   }
 </script>
 
@@ -53,10 +73,11 @@
     {@const l = line('Library', m.library)}
     <button
       class="chip"
-      class:selected={selected === m.steamid}
+      class:selected={!allSelected && selected.includes(m.steamid)}
+      class:unselected={!allSelected && !selected.includes(m.steamid)}
       class:dim={m.wishlist.state === 'hidden' || m.wishlist.state === 'error'}
       title={title(m)}
-      onclick={() => onselect(m.steamid)}
+      onclick={(e) => onselect(m.steamid, e.ctrlKey || e.metaKey)}
     >
       {#if m.avatar}
         <img class="av" src={m.avatar} alt="" />
@@ -70,6 +91,22 @@
       </span>
     </button>
   {/each}
+
+  <div class="presets">
+    <button class="preset" class:active={allSelected} onclick={onall} title="Select all members">All</button>
+    {#each presets as p (p.id)}
+      <button
+        class="preset"
+        class:active={!allSelected && sameSelection(presetSelection(p, allIds), selected)}
+        title={`${p.name}: ${presetSelection(p, allIds).map((id) => members.find((m) => m.steamid === id)?.name ?? id).join(', ')}\nRight-click to remove`}
+        onclick={() => onpreset(p)}
+        oncontextmenu={(e) => {
+          e.preventDefault();
+          onremove(p);
+        }}>{p.name}</button>
+    {/each}
+    <button class="preset add" onclick={onadd} title="Save the current selection as a preset">+</button>
+  </div>
 </div>
 
 <style>
@@ -98,6 +135,44 @@
   .chip.selected {
     border-color: #67c1f5;
     background: rgba(103, 193, 245, 0.18);
+  }
+  .chip.unselected {
+    opacity: 0.45;
+  }
+  .chip.unselected:hover {
+    opacity: 0.8;
+  }
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: stretch;
+  }
+  .preset {
+    min-width: 48px;
+    padding: 0 14px;
+    border: 1px solid #3a5269;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.25);
+    color: #c6d4df;
+    font: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .preset:hover {
+    border-color: #67c1f5;
+    color: #fff;
+  }
+  .preset.active {
+    border-color: #67c1f5;
+    background: rgba(103, 193, 245, 0.18);
+    color: #fff;
+  }
+  .preset.add {
+    min-width: 40px;
+    padding: 0 12px;
+    font-size: 18px;
+    color: #67c1f5;
   }
   .chip.dim .av {
     filter: grayscale(1);

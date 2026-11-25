@@ -9,6 +9,7 @@ import { groupBaseFromUrl, readPageContext } from '@/lib/steam/community';
 const TAB_HASH = '#wishlists';
 const SETTINGS_KEY = 'sgf:settings';
 const PRUNE_KEY = 'sgf:lastPrune';
+const presetsKey = (groupBase: string) => `sgf:presets:${groupBase}`;
 
 export default defineContentScript({
   matches: ['https://steamcommunity.com/groups/*', 'https://steamcommunity.com/gid/*'],
@@ -55,6 +56,8 @@ export default defineContentScript({
     const ui = await createShadowRootUi(ctx, {
       name: 'sgf-wishlists',
       position: 'inline',
+      // Keep typing in our inputs (tag search, preset names) away from Steam's page handlers.
+      isolateEvents: true,
       anchor: column,
       append: 'last',
       onMount: (container) => mount(App, { target: container, props: { source } }),
@@ -149,6 +152,14 @@ function createExtensionSource(groupBase: string): DataSource {
     },
     async saveSettings(s) {
       await local.set({ [SETTINGS_KEY]: s });
+    },
+    async getPresets() {
+      const key = presetsKey(groupBase);
+      const p = (await local.get(key))[key];
+      return Array.isArray(p) ? p : [];
+    },
+    async savePresets(p) {
+      await local.set({ [presetsKey(groupBase)]: p });
     },
   };
 }

@@ -36,7 +36,7 @@ const rows = buildRows({
   viewer: { loggedIn: true, owned: [4], wishlist: [1, 2] },
 });
 
-const view = (o: Partial<ViewOptions>) => applyView(rows, { sort: 'wishlisted', includeExtras: false, hideOwned: false, member: null, ...o }).map((r) => r.info.appid);
+const view = (o: Partial<ViewOptions>) => applyView(rows, { sort: 'wishlisted', includeExtras: false, hideOwned: false, members: null, ...o }).map((r) => r.info.appid);
 
 describe('buildRows', () => {
   it('merges wishlists, owners and viewer flags', () => {
@@ -72,7 +72,7 @@ describe('applyView', () => {
     expect(view({ sort: 'name' })).toEqual([1, 2, 4, 99]);
   });
   it('filters by member and hides owned games', () => {
-    expect(view({ member: VIEWER })).toEqual([2, 1]);
+    expect(view({ members: [VIEWER] })).toEqual([2, 1]);
     expect(view({ hideOwned: true })).not.toContain(4);
   });
 });
