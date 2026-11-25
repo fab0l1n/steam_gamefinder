@@ -13,12 +13,18 @@ function art(label: string, hue: number, w = 231, h = 87): string {
 const ME = '76561190000000001';
 const VITU = '76561190000000002';
 const SHY = '76561190000000003';
+const KAI = '76561190000000004';
+const MO = '76561190000000005';
 
 const members: Member[] = [
   { steamid: ME, name: 'fab0l1n', avatar: art('F', 200, 64, 64), profilePrivacy: 'friendsonly', isViewer: true,
     wishlist: { state: 'ok', count: 4, via: 'login', fetchedAt: Date.now() }, library: { state: 'ok', count: 2054, via: 'store', fetchedAt: Date.now() } },
   { steamid: VITU, name: 'Vitu', avatar: art('V', 20, 64, 64), profilePrivacy: 'public', isViewer: false,
     wishlist: { state: 'ok', count: 5, via: 'public', fetchedAt: Date.now() }, library: { state: 'ok', count: 230, via: 'login', fetchedAt: Date.now() } },
+  { steamid: KAI, name: 'Kai', avatar: art('K', 120, 64, 64), profilePrivacy: 'public', isViewer: false,
+    wishlist: { state: 'ok', count: 2, via: 'public', fetchedAt: Date.now() }, library: { state: 'ok', count: 310, via: 'login', fetchedAt: Date.now() } },
+  { steamid: MO, name: 'Mo', avatar: art('M', 330, 64, 64), profilePrivacy: 'friendsonly', isViewer: false,
+    wishlist: { state: 'ok', count: 1, via: 'login', fetchedAt: Date.now() }, library: { state: 'ok', count: 95, via: 'login', fetchedAt: Date.now() } },
   { steamid: SHY, name: 'ShyPlayer', avatar: art('S', 280, 64, 64), profilePrivacy: 'private', isViewer: false,
     wishlist: { state: 'hidden', error: 'Steam returned no wishlist, even with your login: private, friends-only (and you are not friends), or empty.' },
     library: { state: 'hidden', error: 'Steam showed no games: game details are private or friends-only.' } },
@@ -50,11 +56,15 @@ const games = new Map<number, GameInfo>([
 
 const wishlists = new Map([
   [ME, [{ appid: 892970, addedAt: 1700000000 }, { appid: 3065800, addedAt: 1745000000 }, { appid: 4244510, addedAt: 1757000000 }, { appid: 2627260, addedAt: 1742000000 }]],
+  [KAI, [{ appid: 3065800, addedAt: 1746000000 }, { appid: 4244510, addedAt: 1758000000 }]],
+  [MO, [{ appid: 3065800, addedAt: 1747000000 }]],
   [VITU, [{ appid: 3065800, addedAt: 1745500000 }, { appid: 4244510, addedAt: 1757200000 }, { appid: 4031890, addedAt: 1772500000 }, { appid: 1086940, addedAt: 1740000000 }, { appid: 730, addedAt: 1600000000 }]],
 ]);
 const libraries = new Map([
   [ME, new Map([[1086940, 0]])],
-  [VITU, new Map([[892970, 4140]])],
+  [VITU, new Map([[892970, 4140], [1086940, 9960]])],
+  [KAI, new Map([[1086940, 3000], [892970, 600], [730, 12000]])],
+  [MO, new Map([[1086940, 50], [892970, 1200]])],
 ]);
 const rows = buildRows({ members, wishlists, libraries, games, viewer: { loggedIn: true, owned: [1086940, 730], wishlist: [892970, 3065800, 4244510, 2627260] } });
 

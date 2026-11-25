@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GameRow, Member } from '../lib/types';
+  import AvatarStack from './AvatarStack.svelte';
   import { icons, reviewTone } from './icons';
 
   let {
@@ -17,13 +18,12 @@
   const info = $derived(row.info);
   const highlight = $derived(row.viewerOwns ? 'owned' : row.viewerWishlisted ? 'wish' : '');
   const tone = $derived(reviewTone(info.review?.score ?? 0));
-  const reviewIcon = $derived(tone === 'negative' ? icons.thumbDown : tone === 'mixed' ? icons.thumbMixed : icons.thumbUp);
+  const reviewIcon = $derived(tone === 'negative' ? icons.thumbDown : tone === 'mixed' ? icons.tilde : icons.thumbUp);
   const reviewTitle = $derived(
     info.review
       ? `${info.review.label}: ${info.review.percent}% of ${info.review.count.toLocaleString('en-US')} user reviews are positive`
       : 'No user reviews yet',
   );
-  const names = (ids: string[]) => ids.map((id) => members.get(id)?.name ?? id).join(', ');
 </script>
 
 <a
@@ -51,37 +51,21 @@
   <div class="main">
     <div class="name">{info.name}</div>
     <div class="meta">
-      <span class="platforms">
-        {#if info.platforms.windows}<span title="Windows">{@html icons.windows}</span>{/if}
-        {#if info.platforms.mac}<span title="macOS">{@html icons.mac}</span>{/if}
-        {#if info.platforms.linux}<span title="SteamOS + Linux">{@html icons.linux}</span>{/if}
-        {#if info.platforms.deck === 3}<span class="deck" title="Steam Deck Verified">{@html icons.deck}</span>{/if}
-      </span>
-      <span class="people wish" title={`Wishlisted by ${names(row.wishlistedBy.map((w) => w.steamid))}`}>
-        <span class="ico">{@html icons.star}</span>
-        {#each row.wishlistedBy as w (w.steamid)}
-          {@const m = members.get(w.steamid)}
-          {#if m?.avatar}<img class="av" src={m.avatar} alt={m.name} />{:else}<span class="av ph">{(m?.name ?? '?').slice(0, 1)}</span>{/if}
-        {/each}
-        <span class="n">{row.wishlistedBy.length}</span>
-      </span>
       {#if row.ownedBy.length}
-        <span class="people own" title={`Owned by ${names(row.ownedBy.map((o) => o.steamid))}`}>
-          <span class="ico">{@html icons.library}</span>
-          {#each row.ownedBy as o (o.steamid)}
-            {@const m = members.get(o.steamid)}
-            {#if m?.avatar}<img class="av" src={m.avatar} alt={m.name} />{:else}<span class="av ph">{(m?.name ?? '?').slice(0, 1)}</span>{/if}
-          {/each}
-          <span class="n">{row.ownedBy.length}</span>
-        </span>
+        <AvatarStack kind="owned" ids={row.ownedBy.map((o) => o.steamid)} {members} />
       {/if}
+      <AvatarStack kind="wishlist" ids={row.wishlistedBy.map((w) => w.steamid)} {members} />
     </div>
   </div>
 
   <div class="date">{info.releaseText}</div>
 
   <div class="review {tone}" title={reviewTitle}>
-    {#if info.review}{@html reviewIcon}{/if}
+    {#if info.review}
+      <span class="thumb">{@html reviewIcon}</span>
+      <span class="rv-pct">{info.review.percent}%</span>
+      <span class="rv-count">({info.review.count.toLocaleString('en-US')})</span>
+    {/if}
   </div>
 
   <div class="price">
@@ -98,7 +82,7 @@
 <style>
   .row {
     display: grid;
-    grid-template-columns: 184px minmax(0, 1fr) 96px 26px 150px;
+    grid-template-columns: 184px minmax(0, 1fr) 92px 124px 140px;
     align-items: center;
     gap: 12px;
     min-height: 69px;
@@ -172,48 +156,11 @@
   }
   .meta {
     display: flex;
-    gap: 14px;
+    gap: 16px;
     align-items: center;
-    margin-top: 5px;
+    margin-top: 6px;
+    min-height: 22px;
     color: #8f98a0;
-  }
-  .platforms {
-    display: inline-flex;
-    gap: 5px;
-    align-items: center;
-  }
-  .deck {
-    color: #59bf40;
-  }
-  .people {
-    display: inline-flex;
-    gap: 3px;
-    align-items: center;
-    font-size: 11px;
-  }
-  .people .ico {
-    display: inline-flex;
-    margin-right: 2px;
-  }
-  .people.wish .ico {
-    color: #67c1f5;
-  }
-  .people.own .ico {
-    color: #8bc53f;
-  }
-  .av {
-    width: 18px;
-    height: 18px;
-    border-radius: 2px;
-  }
-  .av.ph {
-    display: inline-grid;
-    place-items: center;
-    background: #2a475e;
-    font-size: 10px;
-  }
-  .n {
-    margin-left: 3px;
   }
   .date {
     color: #8f98a0;
@@ -222,7 +169,18 @@
   }
   .review {
     display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .thumb {
+    display: inline-flex;
+    width: 16px;
     justify-content: center;
+  }
+  .rv-count {
+    color: #8f98a0;
   }
   .review.positive {
     color: #66c0f4;
