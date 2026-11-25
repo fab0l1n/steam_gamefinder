@@ -18,13 +18,18 @@ everyone wants, what's on sale, and who already owns it.
 - **Co-op column** left of the release date: "X Player Co-op" from co-optimus.com (online count, else
   LAN/couch), looked up only for games Steam lists as co-op and cached for 30 days; plain "Co-op" when
   Steam lists co-op but co-optimus has no entry. Details in the tooltip and hover preview.
+  Lookup order: co-optimus API by Steam AppID → API by title → the co-optimus website (the API misses
+  newer games): `/related-news/<title-slug>` → the game page, accepted only if it links the same Steam
+  app. Website requests are paced 1 s apart as their robots.txt asks.
 - **Review column**: rating icon (thumb up/down, `~` for mixed) with percent positive and number of reviews.
 - **Member status strip**: every member with what could be loaded (wishlist and library counts, hidden,
   needs sign-in, cached, failed) and why.
-- **Member selection**: click a member to see only their wishlist; Ctrl+click (⌘ on Mac) adds or removes
-  members (the list shows games wishlisted by any selected member).
-- **Presets** after the members: *All*, your saved presets, and *+* to save the current selection under
+- **Member selection**: click a member to see only their games; Ctrl+click (⌘ on Mac) adds or removes
+  members. The list shows games any selected member has on their wishlist or in their library.
+- **Presets** above the members: *All*, your saved presets, and *+* to save the current selection under
   a name. Right-click a saved preset to remove it (asks first). Stored per group in your browser.
+- **Debug log** at the bottom: what was loaded from where (cache or Steam), per-member results and every
+  co-op lookup. *Copy* puts it on the clipboard for bug reports.
 - **Hover preview**: screenshot, reviews, tags, description, who wishlisted it since when, who owns it
   and how long they played.
 - **Sorting** (most wishlisted, discount, price, rating, release date, name) and toggles for DLC/hardware,
@@ -77,7 +82,8 @@ group page (content script)                 background worker
   ├─ /groups/<name>/memberslistxml           ├─ IStoreBrowseService/GetItems                    (200 apps per call)
   ├─ /profiles/<id>/?xml=1                   └─ store /tagdata/populartags                      (tag names)
   └─ /profiles/<id>/games/?tab=all  (libraries; needs you signed in)
-                                             └─ api.co-optimus.com/games.php?steam=<appid>  (co-op counts, 2 at a time)
+                                             ├─ api.co-optimus.com/games.php?steam=<appid>  (co-op counts, 2 at a time)
+                                             └─ www.co-optimus.com (fallback for newer games, 1 request/s)
 ```
 
 - steamcommunity.com only allows the page to talk to Steam hosts (CSP), and store cookies are third-party
@@ -101,7 +107,7 @@ A member's wishlist and library follow their Steam **Game details** privacy sett
 ```
 src/entrypoints/background.ts        message handler (validates requests from our content script)
 src/entrypoints/group.content/       tab injection + mounting the UI
-src/components/                      Svelte UI (App, MemberStrip, GameRow, AvatarStack, FilterPanel, HoverPreview, Dialog)
+src/components/                      Svelte UI (App, MemberStrip, GameRow, AvatarStack, FilterPanel, HoverPreview, Dialog, DebugLog)
 src/lib/steam/                       parsers for Steam responses (pure, unit-tested)
 src/lib/loader.ts                    load flow and per-member status
 src/lib/aggregate.ts                 merge, sort, toolbar options

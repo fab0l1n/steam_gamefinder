@@ -44,3 +44,18 @@ describe('member selection', () => {
     expect(ids(['a', 'd'])).toEqual([1, 3]);
   });
 });
+
+describe('member filter includes libraries', () => {
+  it('shows games a selected member wishlisted or owns', () => {
+    const row = (appid: number, by: string[], owners: string[]): GameRow => ({
+      info: mapStoreItem(rawItem(appid), appid),
+      wishlistedBy: by.map((steamid) => ({ steamid, addedAt: 0 })),
+      ownedBy: owners.map((steamid) => ({ steamid, playtime: 0 })),
+      viewerOwns: false,
+      viewerWishlisted: false,
+    });
+    const rows = [row(1, ['a'], []), row(2, ['b'], ['c']), row(3, ['d'], [])];
+    const ids = applyView(rows, { sort: 'name', includeExtras: true, hideOwned: false, members: ['c'] }).map((r) => r.info.appid);
+    expect(ids).toEqual([2]);
+  });
+});

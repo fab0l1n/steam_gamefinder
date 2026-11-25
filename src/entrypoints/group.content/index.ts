@@ -137,9 +137,10 @@ function createExtensionSource(groupBase: string): DataSource {
   }
 
   return {
-    async load(force, settings, emit) {
+    async load(force, settings, emit, log) {
+      log(`Steam Gamefinder ${browser.runtime.getManifest().version} on ${groupBase}`);
       await loadGroup(
-        { groupBase, page, fetchText, bg, cache, settings: { loadLibraries: settings.loadLibraries } },
+        { groupBase, page, fetchText, bg, cache, log, settings: { loadLibraries: settings.loadLibraries } },
         { force },
         emit,
       );

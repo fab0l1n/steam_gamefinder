@@ -67,31 +67,7 @@
   }
 </script>
 
-<div class="strip">
-  {#each members as m (m.steamid)}
-    {@const w = line('Wishlist', m.wishlist)}
-    {@const l = line('Library', m.library)}
-    <button
-      class="chip"
-      class:selected={!allSelected && selected.includes(m.steamid)}
-      class:unselected={!allSelected && !selected.includes(m.steamid)}
-      class:dim={m.wishlist.state === 'hidden' || m.wishlist.state === 'error'}
-      title={title(m)}
-      onclick={(e) => onselect(m.steamid, e.ctrlKey || e.metaKey)}
-    >
-      {#if m.avatar}
-        <img class="av" src={m.avatar} alt="" />
-      {:else}
-        <span class="av ph">{m.name.slice(0, 1).toUpperCase()}</span>
-      {/if}
-      <span class="txt">
-        <span class="name">{m.name}{#if m.isViewer}<span class="you">&nbsp;(you)</span>{/if}</span>
-        <span class="st {w.tone}">{@html w.icon}{w.text}</span>
-        <span class="st {l.tone}">{@html l.icon}{l.text}</span>
-      </span>
-    </button>
-  {/each}
-
+<div class="wrap">
   <div class="presets">
     <button class="preset" class:active={allSelected} onclick={onall} title="Select all members">All</button>
     {#each presets as p (p.id)}
@@ -107,9 +83,40 @@
     {/each}
     <button class="preset add" onclick={onadd} title="Save the current selection as a preset">+</button>
   </div>
+
+  <div class="strip">
+    {#each members as m (m.steamid)}
+      {@const w = line('Wishlist', m.wishlist)}
+      {@const l = line('Library', m.library)}
+      <button
+        class="chip"
+        class:selected={!allSelected && selected.includes(m.steamid)}
+        class:unselected={!allSelected && !selected.includes(m.steamid)}
+        class:dim={m.wishlist.state === 'hidden' || m.wishlist.state === 'error'}
+        title={title(m)}
+        onclick={(e) => onselect(m.steamid, e.ctrlKey || e.metaKey)}
+      >
+        {#if m.avatar}
+          <img class="av" src={m.avatar} alt="" />
+        {:else}
+          <span class="av ph">{m.name.slice(0, 1).toUpperCase()}</span>
+        {/if}
+        <span class="txt">
+          <span class="name">{m.name}{#if m.isViewer}<span class="you">&nbsp;(you)</span>{/if}</span>
+          <span class="st {w.tone}">{@html w.icon}{w.text}</span>
+          <span class="st {l.tone}">{@html l.icon}{l.text}</span>
+        </span>
+      </button>
+    {/each}
+  </div>
 </div>
 
 <style>
+  .wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
   .strip {
     display: flex;
     flex-wrap: wrap;
@@ -146,11 +153,11 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    align-items: stretch;
   }
+  /* Same space above/below the label as left/right of it. */
   .preset {
-    min-width: 48px;
-    padding: 0 14px;
+    padding: 8px;
+    line-height: 16px;
     border: 1px solid #3a5269;
     border-radius: 6px;
     background: rgba(0, 0, 0, 0.25);
@@ -169,9 +176,8 @@
     color: #fff;
   }
   .preset.add {
-    min-width: 40px;
-    padding: 0 12px;
-    font-size: 18px;
+    min-width: 32px;
+    font-weight: 600;
     color: #67c1f5;
   }
   .chip.dim .av {

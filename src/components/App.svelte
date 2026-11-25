@@ -10,6 +10,7 @@
   import HoverPreview from './HoverPreview.svelte';
   import FilterPanel from './FilterPanel.svelte';
   import Dialog from './Dialog.svelte';
+  import DebugLog from './DebugLog.svelte';
   import { clickMember, isAllSelected, newPreset, presetSelection, type Preset } from '../lib/selection';
 
   let { source }: { source: DataSource } = $props();
@@ -20,6 +21,7 @@
   /** Selected members; empty = all. */
   let selection = $state<string[]>([]);
   let presets = $state<Preset[]>([]);
+  let logLines = $state<string[]>([]);
   let dialog = $state<{ kind: 'add' } | { kind: 'remove'; preset: Preset } | null>(null);
   let busy = $state(false);
   let tags = $state<Record<number, string>>({});
@@ -54,13 +56,20 @@
     return h < 24 ? `${h} h ago` : `${Math.round(h / 24)} d ago`;
   }
 
+  function log(line: string) {
+    const t = new Date().toTimeString().slice(0, 8);
+    logLines.push(`${t}  ${line}`);
+    if (logLines.length > 3000) logLines.splice(0, logLines.length - 3000);
+  }
+
   async function run(force: boolean) {
     if (busy) return;
     busy = true;
     hover = null;
     try {
-      await source.load(force, $state.snapshot(settings), (s) => (snap = s));
+      await source.load(force, $state.snapshot(settings), (s) => (snap = s), log);
     } catch (e) {
+      log(`Load failed: ${String(e)}`);
       snap = snap
         ? { ...snap, phase: 'error', error: String(e) }
         : { phase: 'error', message: String(e), error: String(e), groupName: '', members: [], rows: [], viewer: { steamid: null, loggedIn: false }, updatedAt: null };
@@ -157,7 +166,7 @@
       Starting…
     {:else if snap.phase === 'done'}
       {#if !allSelected}
-        Showing {rows.length} games wishlisted by {selectedNames} ·
+        Showing {rows.length} games wishlisted or owned by {selectedNames} ·
         <button class="link" onclick={() => select([])}>show all</button>
       {:else}
         Showing {rows.length} of {snap.rows.length} games from the wishlists of {visibleMembers} of {snap.members.length} members
@@ -232,6 +241,8 @@
       oncancel={() => (dialog = null)}
     />
   {/if}
+
+  <DebugLog lines={logLines} onclear={() => (logLines = [])} />
 
   <div class="footer">
     Steam Gamefinder · game data from Steam (prices for your store region) · co-op player counts from

@@ -36,6 +36,8 @@ export interface LoaderDeps {
   cache: Cache;
   settings: { loadLibraries: boolean };
   now?: () => number;
+  /** Debug log sink (the page's debug panel). */
+  log?: (line: string) => void;
 }
 
 export { mapLimit };
@@ -51,6 +53,10 @@ export async function loadGroup(
 ): Promise<LoadSnapshot> {
   const { cache, page, force } = { ...deps, force: opts.force };
   const now = deps.now ?? Date.now;
+  const log = deps.log ?? (() => {});
+  const t0 = now();
+  const src = (r: { fromCache: boolean; stale: boolean }) => (r.stale ? 'stale cache' : r.fromCache ? 'cache' : 'Steam');
+  log(`Load started (${force ? 'refresh, cache ignored' : 'cache allowed'}) · viewer ${page.viewerSteamId ?? 'not signed in'} · ${page.language}/${page.country ?? 'no country'}`);
   const snap: LoadSnapshot = {
     phase: 'members',
     message: 'Loading group members…',
@@ -81,9 +87,11 @@ export async function loadGroup(
     );
     snap.groupName = res.value.groupName;
     memberIds = res.value.ids;
+    log(`Members: ${memberIds.length} in "${res.value.groupName}" (${src(res)})`);
   } catch (e) {
     snap.phase = 'error';
     snap.error = `Couldn't load the group's member list: ${errorText(e)}`;
+    log(snap.error);
     snap.message = snap.error;
     push();
     return snap;
@@ -123,9 +131,11 @@ export async function loadGroup(
   let viewer: ViewerStoreData = { loggedIn: false, owned: [], wishlist: [] };
   if (page.loggedIn) {
     try {
-      viewer = (await cache.cached(`viewerStore:${page.viewerSteamId}`, TTL.viewerStore, () => deps.bg({ type: 'viewerStore' }), force)).value;
-    } catch {
-      /* highlights just stay off */
+      const res = await cache.cached(`viewerStore:${page.viewerSteamId}`, TTL.viewerStore, () => deps.bg({ type: 'viewerStore' }), force);
+      viewer = res.value;
+      log(`Your store data: ${viewer.loggedIn ? `${viewer.wishlist.length} wishlisted, ${viewer.owned.length} owned` : 'not signed in to the store'} (${src(res)})`);
+    } catch (e) {
+      log(`Your store data failed: ${errorText(e)}`);
     }
   }
 
@@ -195,6 +205,8 @@ export async function loadGroup(
     }
 
     done++;
+    const st = (s: SourceStatus) => (s.state === 'ok' ? `${s.count} (${s.via}${s.stale ? ', stale' : ''})` : `${s.state}${s.error ? `: ${s.error}` : ''}`);
+    log(`${m.name}: wishlist ${st(m.wishlist)} · library ${st(m.library)}`);
     snap.message = `Loaded ${done} of ${snap.members.length} members…`;
     push();
   });
@@ -216,13 +228,18 @@ export async function loadGroup(
     if (!hit || force || now() - hit.t >= TTL.storeItem) missing.push(appid);
   }
   if (missing.length) {
+    const t = now();
     try {
       const fresh = await deps.bg({ type: 'storeItems', appids: missing, language: page.language, country: page.country });
       for (const g of fresh) games.set(g.appid, g);
       await cache.setMany(new Map(fresh.map((g) => [keyOf(g.appid), g])));
+      log(`Game details: ${appids.length} games, ${appids.length - missing.length} from cache, ${missing.length} from Steam in ${now() - t} ms`);
     } catch (e) {
       snap.error = `Some game details could not be refreshed: ${errorText(e)}`;
+      log(snap.error);
     }
+  } else {
+    log(`Game details: ${appids.length} games, all from cache`);
   }
 
   // 6. Rows (shown right away; co-op counts fill in afterwards).
@@ -235,7 +252,8 @@ export async function loadGroup(
 
   // 7. Co-op player counts from co-optimus, only for games Steam lists as co-op (cached 30 days).
   const coopRows = snap.rows.filter((r) => r.info.coopFlag);
-  const coopKey = (appid: number) => `coop:${appid}`;
+  // "coop2": lookups now fall back to title search and the website; older "not listed" results are retried.
+  const coopKey = (appid: number) => `coop2:${appid}`;
   const cachedCoop = await cache.getMany<CoopInfo | null>(coopRows.map((r) => coopKey(r.info.appid)));
   const missingCoop: number[] = [];
   const applyCoop = (appid: number, c: CoopInfo | null) => {
@@ -247,12 +265,15 @@ export async function loadGroup(
     if (!hit || force || now() - hit.t >= TTL.coop) missingCoop.push(r.info.appid);
   }
   snap.coopProgress = { done: coopRows.length - missingCoop.length, total: coopRows.length, failed: 0 };
+  log(`Co-op: ${coopRows.length} games Steam lists as co-op, ${coopRows.length - missingCoop.length} cached, ${missingCoop.length} to look up`);
   push();
+  const nameOf = new Map(snap.rows.map((r) => [r.info.appid, r.info.available ? r.info.name : '']));
 
   for (let i = 0; i < missingCoop.length; i += COOP_CHUNK) {
     const batch = missingCoop.slice(i, i + COOP_CHUNK);
     try {
-      const res = await deps.bg({ type: 'coop', appids: batch });
+      const res = await deps.bg({ type: 'coop', items: batch.map((appid) => ({ appid, name: nameOf.get(appid) ?? '' })) });
+      for (const line of res.trace) log(`Co-op ${line}`);
       const fresh = new Map<string, CoopInfo | null>();
       for (const appid of batch) {
         if (appid in res.found) {
@@ -266,10 +287,12 @@ export async function loadGroup(
     } catch (e) {
       snap.coopProgress.failed += batch.length;
       snap.error = `Some co-op counts could not be loaded: ${errorText(e)}`;
+      log(snap.error);
     }
     snap.coopProgress.done += batch.length;
     push();
   }
+  log(`Done in ${((now() - t0) / 1000).toFixed(1)} s: ${snap.rows.length} games${snap.coopProgress.failed ? `, ${snap.coopProgress.failed} co-op lookups failed` : ''}`);
   return snap;
 }
 

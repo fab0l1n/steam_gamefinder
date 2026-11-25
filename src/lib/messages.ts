@@ -6,7 +6,7 @@ export type BgRequest =
   | { type: 'wishlist'; steamid: string; tryLogin: boolean }
   | { type: 'storeItems'; appids: number[]; language: string; country: string | null }
   | { type: 'tags'; language: string }
-  | { type: 'coop'; appids: number[] };
+  | { type: 'coop'; items: { appid: number; name: string }[] };
 
 export interface CoopResult {
   /** appid -> counts, or null when co-optimus doesn't list it. */
@@ -14,6 +14,8 @@ export interface CoopResult {
   /** appids whose lookup failed (not cached, retried next time). */
   failed: number[];
   lastError?: string;
+  /** One line per app describing which source answered (for the debug log). */
+  trace: string[];
 }
 
 export interface WishlistResult {
