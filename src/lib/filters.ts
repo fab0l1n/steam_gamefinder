@@ -15,6 +15,10 @@ export interface Filters {
   priceMaxCents: number | null;
   tagsInclude: number[];
   tagsExclude: number[];
+  /** Release year from (inclusive); null = no lower bound. */
+  releaseFrom: number | null;
+  /** Release year up to (inclusive); 'any' = any date but no "To be announced"/"Coming soon"; null = no filter. */
+  releaseTo: number | 'any' | null;
 }
 
 export const EMPTY_FILTERS: Filters = {
@@ -28,6 +32,8 @@ export const EMPTY_FILTERS: Filters = {
   priceMaxCents: null,
   tagsInclude: [],
   tagsExclude: [],
+  releaseFrom: null,
+  releaseTo: null,
 };
 
 export function filtersActive(f: Filters): boolean {
@@ -41,7 +47,9 @@ export function filtersActive(f: Filters): boolean {
     f.priceMinCents != null ||
     f.priceMaxCents != null ||
     f.tagsInclude.length > 0 ||
-    f.tagsExclude.length > 0
+    f.tagsExclude.length > 0 ||
+    f.releaseFrom != null ||
+    f.releaseTo != null
   );
 }
 
@@ -62,6 +70,15 @@ export function matchesFilters(row: GameRow, f: Filters, opts: { ignoreTags?: bo
     if (!price || price.finalCents == null) return false;
     if (f.priceMinCents != null && price.finalCents < f.priceMinCents) return false;
     if (f.priceMaxCents != null && price.finalCents > f.priceMaxCents) return false;
+  }
+
+  if (f.releaseFrom != null || f.releaseTo != null) {
+    // Any release bound needs a date: "To be announced" and "Coming soon" drop out.
+    const d = row.info.releaseDate;
+    if (d == null) return false;
+    const year = new Date(d * 1000).getUTCFullYear();
+    if (f.releaseFrom != null && year < f.releaseFrom) return false;
+    if (typeof f.releaseTo === 'number' && year > f.releaseTo) return false;
   }
 
   if (!opts.ignoreTags) {
@@ -108,4 +125,19 @@ export function priceLabel(min: number | null, max: number | null, fmt: (cents: 
   if (noMin) return max === 0 ? 'Free' : `Under ${fmt(max as number)}`;
   if (noMax) return `${fmt(min as number)} and up`;
   return `${fmt(min as number)} – ${fmt(max as number)}`;
+}
+
+/** Years with a (planned) release in `rows`, newest first, always including the current year. */
+export function releaseYears(rows: GameRow[], now = Date.now()): number[] {
+  const ys = new Set<number>([new Date(now).getUTCFullYear()]);
+  for (const r of rows) if (r.info.releaseDate != null) ys.add(new Date(r.info.releaseDate * 1000).getUTCFullYear());
+  return [...ys].sort((a, b) => b - a);
+}
+
+export function releaseLabel(from: number | null, to: number | 'any' | null): string {
+  if (from == null && to == null) return 'Any release date';
+  if (from == null && to === 'any') return 'Any date, no "To be announced"';
+  if (from == null) return `Up to ${to}`;
+  if (to == null || to === 'any') return `${from} or later`;
+  return from === to ? `${from}` : `${from} – ${to}`;
 }

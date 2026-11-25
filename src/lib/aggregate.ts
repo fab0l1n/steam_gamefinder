@@ -80,7 +80,7 @@ export function isExtra(info: GameInfo): boolean {
 const byName = (a: GameRow, b: GameRow) => a.info.name.localeCompare(b.info.name);
 const discount = (r: GameRow) => r.info.price?.discountPct ?? 0;
 const rating = (r: GameRow) => (r.info.review ? r.info.review.score * 1e9 + r.info.review.percent * 1e7 + r.info.review.count : -1);
-const release = (r: GameRow) => (r.info.comingSoon ? Number.MAX_SAFE_INTEGER : r.info.releaseDate ?? 0);
+const release = (r: GameRow) => r.info.releaseDate ?? (r.info.comingSoon ? Number.MAX_SAFE_INTEGER : 0);
 const price = (r: GameRow) => r.info.price?.finalCents ?? Number.MAX_SAFE_INTEGER;
 
 const comparators: Record<SortKey, (a: GameRow, b: GameRow) => number> = {

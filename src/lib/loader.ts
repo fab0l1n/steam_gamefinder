@@ -218,8 +218,8 @@ export async function loadGroup(
   snap.message = `Loading details for ${appids.length} games…`;
   push();
 
-  // "app3": entries carry up to 20 tags and the co-op flag, so older cache entries are ignored.
-  const keyOf = (appid: number) => `app3:${page.language}:${page.country ?? 'auto'}:${appid}`;
+  // "app4": entries carry 20 tags, the co-op flag and planned release dates; older entries are ignored.
+  const keyOf = (appid: number) => `app4:${page.language}:${page.country ?? 'auto'}:${appid}`;
   const games = new Map<number, GameInfo>();
   const cachedApps = await cache.getMany<GameInfo>(appids.map(keyOf));
   const missing: number[] = [];

@@ -57,6 +57,33 @@ describe('filters', () => {
     expect(ids({ tagsExclude: [3] })).toEqual([1, 4]);
     expect(rows.filter((r) => matchesFilters(r, { ...EMPTY_FILTERS, tagsInclude: [9] }, { ignoreTags: true }))).toHaveLength(4);
   });
+  it('filters by release year; "Any" drops undated (TBA / coming soon) games', () => {
+    const dated = [
+      row(10, { release: { steam_release_date: Date.UTC(2019, 5, 1) / 1000 } }),
+      row(11, { release: { steam_release_date: Date.UTC(2023, 7, 3) / 1000 } }),
+      row(12, { release: { is_coming_soon: true, coming_soon_display: 'date_quarter', steam_release_date: Date.UTC(2027, 11, 31) / 1000 } }),
+      row(13, { release: { is_coming_soon: true, coming_soon_display: 'text_tba', custom_release_date_message: 'To be announced' } }),
+    ];
+    const pick = (f: Partial<Filters>) => dated.filter((r) => matchesFilters(r, { ...EMPTY_FILTERS, ...f })).map((r) => r.info.appid);
+    expect(pick({})).toEqual([10, 11, 12, 13]);
+    expect(pick({ releaseTo: 'any' })).toEqual([10, 11, 12]);
+    expect(pick({ releaseFrom: 2020 })).toEqual([11, 12]);
+    expect(pick({ releaseTo: 2023 })).toEqual([10, 11]);
+    expect(pick({ releaseFrom: 2020, releaseTo: 2023 })).toEqual([11]);
+    expect(filtersActive({ ...EMPTY_FILTERS, releaseTo: 'any' })).toBe(true);
+  });
+
+  it('lists release years and labels the range', async () => {
+    const { releaseYears, releaseLabel } = await import('../src/lib/filters');
+    const ys = releaseYears([row(20, { release: { steam_release_date: Date.UTC(2019, 0, 2) / 1000 } })], Date.UTC(2026, 10, 25));
+    expect(ys).toEqual([2026, 2019]);
+    expect(releaseLabel(null, null)).toBe('Any release date');
+    expect(releaseLabel(null, 'any')).toBe('Any date, no "To be announced"');
+    expect(releaseLabel(2020, null)).toBe('2020 or later');
+    expect(releaseLabel(null, 2023)).toBe('Up to 2023');
+    expect(releaseLabel(2020, 2023)).toBe('2020 – 2023');
+  });
+
   it('counts tags, most common first', () => {
     expect(tagCounts(rows)).toEqual([[1, 2], [2, 2], [3, 2]]);
     expect(tagCounts(rows.slice(0, 2))[0]).toEqual([2, 2]);

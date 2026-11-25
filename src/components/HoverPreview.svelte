@@ -33,7 +33,7 @@
 <div class="hover" style:left="{pos.left}px" style:top="{pos.top}px" style:width="{WIDTH}px">
   <div class="title">{info.name}</div>
   <div class="sub">
-    {info.comingSoon ? info.releaseText : `Released ${info.releaseText}`}
+    {info.comingSoon ? (info.releaseDate ? `Planned: ${info.releaseText}` : info.releaseText) : `Released ${info.releaseText}`}
   </div>
   {#if image}<img class="shot" src={image} alt="" />{/if}
   {#if info.review}

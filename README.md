@@ -21,6 +21,8 @@ everyone wants, what's on sale, and who already owns it.
   Lookup order: co-optimus API by Steam AppID → API by title → the co-optimus website (the API misses
   newer games): `/related-news/<title-slug>` → the game page, accepted only if it links the same Steam
   app. Website requests are paced 1 s apart as their robots.txt asks.
+- **Release dates** like Steam search, including planned ones ("26 Nov, 2026", "December 2026",
+  "Q4 2026", "2026") for unreleased games.
 - **Review column**: rating icon (thumb up/down, `~` for mixed) with percent positive and number of reviews.
 - **Member status strip**: every member with what could be loaded (wishlist and library counts, hidden,
   needs sign-in, cached, failed) and why.
@@ -35,7 +37,8 @@ everyone wants, what's on sale, and who already owns it.
 - **Sorting** (most wishlisted, discount, price, rating, release date, name) and toggles for DLC/hardware,
   hiding games you own, and loading libraries.
 - **Filter sidebar** like Steam search with Augmented Steam: review score range, review count, discount
-  percent, price range (two knobs), and user tags (tick to require, `−` to exclude; counts update with the other filters).
+  percent, price range (two knobs), release year (From/To; To = *Any* keeps every dated game but hides
+  "To be announced" and "Coming soon"), and user tags (tick to require, `−` to exclude; counts update with the other filters).
   The view is wider than Steam's group column (up to 1240 px) to fit the sidebar; below 1100 px the
   filters move above the list.
 

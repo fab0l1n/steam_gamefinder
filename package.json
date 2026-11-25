@@ -1,6 +1,6 @@
 {
   "name": "steam-gamefinder",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Adds a Wishlists tab to Steam community groups: every member's wishlist in one list, with prices, reviews and who owns what.",
   "private": true,
   "type": "module",

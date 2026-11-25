@@ -137,3 +137,25 @@ describe('store parsers', () => {
     expect(formatReleaseDate(1691074826)).toBe('3 Aug, 2023');
   });
 });
+
+describe('release dates', () => {
+  // Values as Steam returned them for coming-soon games (25 Nov 2026).
+  it('keeps planned dates and shows them like Steam search', async () => {
+    const { mapRelease } = await import('../src/lib/steam/store');
+    expect(mapRelease({ is_coming_soon: true, coming_soon_display: 'date_full', steam_release_date: 1795651200 }, true)).toEqual({
+      releaseDate: 1795651200,
+      releaseText: '26 Nov, 2026',
+      comingSoon: true,
+    });
+    expect(mapRelease({ is_coming_soon: true, coming_soon_display: 'date_month', steam_release_date: 1798704000 }, true).releaseText).toBe('December 2026');
+    expect(mapRelease({ is_coming_soon: true, coming_soon_display: 'date_quarter', steam_release_date: 1798704000 }, true).releaseText).toBe('Q4 2026');
+    expect(mapRelease({ is_coming_soon: true, coming_soon_display: 'date_year', steam_release_date: 1798704000 }, true).releaseText).toBe('2026');
+    expect(mapRelease({ is_coming_soon: true, coming_soon_display: 'text_tba', custom_release_date_message: 'To be announced' }, true)).toEqual({
+      releaseDate: null,
+      releaseText: 'To be announced',
+      comingSoon: true,
+    });
+    expect(mapRelease({ is_coming_soon: true, coming_soon_display: 'text_comingsoon' }, true).releaseText).toBe('Coming soon');
+    expect(mapRelease({ steam_release_date: 1691074826 }, true)).toEqual({ releaseDate: 1691074826, releaseText: '3 Aug, 2023', comingSoon: false });
+  });
+});

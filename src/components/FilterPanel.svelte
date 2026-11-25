@@ -1,6 +1,6 @@
 <script lang="ts">
   /** Right-hand filter sidebar, modelled on Steam search with Augmented Steam's extra filters. */
-  import { EMPTY_FILTERS, filtersActive, priceLabel, tagCounts, type Filters } from '../lib/filters';
+  import { EMPTY_FILTERS, filtersActive, priceLabel, releaseLabel, tagCounts, type Filters } from '../lib/filters';
   import type { GameRow } from '../lib/types';
 
   let {
@@ -9,6 +9,7 @@
     tagNames,
     steps,
     fmt,
+    years,
   }: {
     filters: Filters;
     /** Rows after every filter except the tag filter (for tag counts). */
@@ -16,6 +17,8 @@
     tagNames: Record<number, string>;
     steps: number[];
     fmt: (cents: number) => string;
+    /** Release years present in the list, newest first. */
+    years: number[];
   } = $props();
 
   const TOP_TAGS = 10;
@@ -58,6 +61,17 @@
       filters.priceMaxCents = steps[idx] === Infinity ? null : steps[idx];
     }
   }
+  function setReleaseFrom(v: string) {
+    const y = v === '' ? null : Number(v);
+    filters.releaseFrom = y;
+    if (y != null && typeof filters.releaseTo === 'number' && filters.releaseTo < y) filters.releaseTo = y;
+  }
+  function setReleaseTo(v: string) {
+    const to = v === '' ? null : v === 'any' ? 'any' : Number(v);
+    filters.releaseTo = to;
+    if (typeof to === 'number' && filters.releaseFrom != null && filters.releaseFrom > to) filters.releaseFrom = to;
+  }
+
   function toggleInclude(t: number) {
     filters.tagsExclude = filters.tagsExclude.filter((x) => x !== t);
     filters.tagsInclude = filters.tagsInclude.includes(t) ? filters.tagsInclude.filter((x) => x !== t) : [...filters.tagsInclude, t];
@@ -118,6 +132,32 @@
           aria-label="Maximum price" oninput={(e) => setPrice('max', +e.currentTarget.value)} />
       </div>
       <div class="center">{priceLabel(filters.priceMinCents, filters.priceMaxCents, fmt)}</div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Narrow by release date</h3>
+    <div class="body">
+      <div class="pair dates">
+        <label>
+          <span>From</span>
+          <select value={filters.releaseFrom == null ? '' : String(filters.releaseFrom)} onchange={(e) => setReleaseFrom(e.currentTarget.value)}>
+            <option value="">—</option>
+            {#each years as y (y)}<option value={String(y)}>{y}</option>{/each}
+          </select>
+        </label>
+        <span>-</span>
+        <label>
+          <span>To</span>
+          <select value={filters.releaseTo == null ? '' : String(filters.releaseTo)} onchange={(e) => setReleaseTo(e.currentTarget.value)}
+            title={'"Any": any release date, but hides "To be announced" and "Coming soon"'}>
+            <option value="">—</option>
+            <option value="any">Any</option>
+            {#each years as y (y)}<option value={String(y)}>{y}</option>{/each}
+          </select>
+        </label>
+      </div>
+      <div class="center">{releaseLabel(filters.releaseFrom, filters.releaseTo)}</div>
     </div>
   </section>
 
@@ -183,6 +223,29 @@
   }
   .pair.short input {
     width: 70px;
+  }
+  .dates label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+  .dates label span {
+    color: #8f98a0;
+  }
+  select {
+    flex: 1;
+    min-width: 0;
+    background: #10161d;
+    border: 1px solid #2a3f5a;
+    border-radius: 2px;
+    color: #c6d4df;
+    padding: 5px 6px;
+    font: inherit;
+  }
+  option {
+    background: #1b2838;
   }
   input[type='number'],
   .search {

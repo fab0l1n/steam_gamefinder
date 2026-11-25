@@ -49,6 +49,10 @@ function g(appid: number, name: string, hue: number, o: Partial<GameInfo> = {}):
     shortDescription: 'A story-rich, party-based RPG where your choices shape a tale of fellowship and betrayal.',
     coopFlag: false,
     ...o,
+    // Keep the mock's date consistent with its label (e.g. "5 Mar, 2026").
+    ...(o.releaseText && o.releaseDate === undefined && !Number.isNaN(Date.parse(o.releaseText.replace(',', '') + ' UTC'))
+      ? { releaseDate: Date.parse(o.releaseText.replace(',', '') + ' UTC') / 1000 }
+      : {}),
   };
 }
 
@@ -59,13 +63,14 @@ const games = new Map<number, GameInfo>([
   [4244510, g(4244510, 'Pratfall', 300, { tagids: [7, 2, 10], releaseText: '7 Sep, 2026', review: { score: 8, label: 'Very Positive', percent: 88, count: 2004 }, price: { isFree: false, final: '7,49€', original: null, discountPct: 0, finalCents: 749 }, platforms: { windows: true, mac: true, linux: true, deck: 3 } })],
   [4031890, g(4031890, 'Palworld: Palfarm', 90, { tagids: [5, 9, 2], releaseDate: null, releaseText: 'To be announced', comingSoon: true, review: null, price: null })],
   [730, g(730, 'Counter-Strike 2', 40, { tagids: [6, 7], releaseText: '21 Aug, 2012', price: { isFree: true, final: 'Free', original: null, discountPct: 0, finalCents: 0 } })],
+  [4400000, g(4400000, 'Starfall Outpost', 200, { tagids: [5, 2, 7], releaseDate: Date.UTC(2027, 11, 31) / 1000, releaseText: 'Q4 2027', comingSoon: true, review: null, price: null })],
   [2627260, g(2627260, 'NINJA GAIDEN 4', 0, { tagids: [8, 4], releaseText: '21 Oct, 2025', review: { score: 3, label: 'Mostly Negative', percent: 31, count: 4100 }, price: { isFree: false, final: '34,99€', original: '69,99€', discountPct: 50, finalCents: 3499 } })],
 ]);
 
 const wishlists = new Map([
   [ME, [{ appid: 892970, addedAt: 1700000000 }, { appid: 3065800, addedAt: 1745000000 }, { appid: 4244510, addedAt: 1757000000 }, { appid: 2627260, addedAt: 1742000000 }]],
   [KAI, [{ appid: 3065800, addedAt: 1746000000 }, { appid: 4244510, addedAt: 1758000000 }]],
-  [MO, [{ appid: 3065800, addedAt: 1747000000 }]],
+  [MO, [{ appid: 3065800, addedAt: 1747000000 }, { appid: 4400000, addedAt: 1760000000 }]],
   [LU, [{ appid: 3065800, addedAt: 1748000000 }]],
   [RIN, [{ appid: 3065800, addedAt: 1749000000 }]],
   [VITU, [{ appid: 3065800, addedAt: 1745500000 }, { appid: 4244510, addedAt: 1757200000 }, { appid: 4031890, addedAt: 1772500000 }, { appid: 1086940, addedAt: 1740000000 }, { appid: 730, addedAt: 1600000000 }]],

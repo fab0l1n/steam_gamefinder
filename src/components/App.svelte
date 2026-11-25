@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { applyView, SORT_LABELS, type SortKey } from '../lib/aggregate';
-  import { EMPTY_FILTERS, filtersActive, matchesFilters, priceFormatter, priceSteps, type Filters } from '../lib/filters';
+  import { EMPTY_FILTERS, filtersActive, matchesFilters, priceFormatter, priceSteps, releaseYears, type Filters } from '../lib/filters';
   import { DEFAULT_SETTINGS, type DataSource, type UiSettings } from '../lib/source';
   import type { GameRow, LoadSnapshot, Member } from '../lib/types';
   import { icons } from './icons';
@@ -44,6 +44,7 @@
   const rows = $derived(tagRows.filter((r) => matchesFilters(r, filters)));
   const steps = $derived(priceSteps(snap?.rows ?? []));
   const fmt = $derived(priceFormatter(snap?.rows ?? []));
+  const years = $derived(releaseYears(snap?.rows ?? []));
   const visibleMembers = $derived((snap?.members ?? []).filter((m) => m.wishlist.state === 'ok').length);
   const sortKeys = Object.keys(SORT_LABELS) as SortKey[];
 
@@ -209,7 +210,7 @@
   {/if}
   </div>
 
-  <FilterPanel bind:filters {tagRows} tagNames={tags} {steps} {fmt} />
+  <FilterPanel bind:filters {tagRows} tagNames={tags} {steps} {fmt} {years} />
   </div>
 
   {#if hover}

@@ -7,6 +7,7 @@ export const GET_ITEMS_BATCH = 200;
 export const COOP_CATEGORIES = new Set([9, 38, 48, 39]);
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_LONG = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /** "3 Aug, 2023" — the format Steam search uses. */
 export function formatReleaseDate(unixSeconds: number): string {
@@ -115,15 +116,43 @@ function mapPrice(raw: RawStoreItem): PriceInfo | null {
   };
 }
 
+/**
+ * Release info the way Steam search shows it. Unreleased games can carry a planned date shown as a
+ * full date, month ("December 2026"), quarter ("Q4 2026") or year ("2026"); those keep `releaseDate`
+ * (for sorting and the year filter). Text-only ones ("To be announced", "Coming soon") get null.
+ */
+export function mapRelease(rel: NonNullable<RawStoreItem['release']>, available: boolean): { releaseDate: number | null; releaseText: string; comingSoon: boolean } {
+  const date = rel.steam_release_date ?? null;
+  if (!rel.is_coming_soon) {
+    if (date) return { releaseDate: date, releaseText: formatReleaseDate(date), comingSoon: false };
+    return { releaseDate: null, releaseText: rel.custom_release_date_message || (available ? 'Coming soon' : ''), comingSoon: available };
+  }
+  if (date) {
+    const d = new Date(date * 1000);
+    const y = d.getUTCFullYear();
+    switch (rel.coming_soon_display) {
+      case 'date_full':
+        return { releaseDate: date, releaseText: formatReleaseDate(date), comingSoon: true };
+      case 'date_month':
+        return { releaseDate: date, releaseText: `${MONTHS_LONG[d.getUTCMonth()]} ${y}`, comingSoon: true };
+      case 'date_quarter':
+        return { releaseDate: date, releaseText: `Q${Math.floor(d.getUTCMonth() / 3) + 1} ${y}`, comingSoon: true };
+      case 'date_year':
+        return { releaseDate: date, releaseText: `${y}`, comingSoon: true };
+    }
+  }
+  return {
+    releaseDate: null,
+    releaseText: rel.custom_release_date_message || (rel.coming_soon_display === 'text_tba' ? 'To be announced' : 'Coming soon'),
+    comingSoon: true,
+  };
+}
+
 /** Maps one GetItems entry. `appid` is used when Steam returns an unavailable stub. */
 export function mapStoreItem(raw: RawStoreItem, appid: number): GameInfo {
   const id = raw.appid ?? raw.id ?? appid;
   const available = raw.success === 1 && raw.visible !== false && !!raw.name;
-  const rel = raw.release ?? {};
-  const comingSoon = !!rel.is_coming_soon || (!rel.steam_release_date && available);
-  const releaseText = rel.steam_release_date && !rel.is_coming_soon
-    ? formatReleaseDate(rel.steam_release_date)
-    : rel.custom_release_date_message || (comingSoon ? 'Coming soon' : '');
+  const { releaseDate, releaseText, comingSoon } = mapRelease(raw.release ?? {}, available);
   const fmt = raw.assets?.asset_url_format;
   const p = raw.platforms ?? {};
   return {
@@ -134,7 +163,7 @@ export function mapStoreItem(raw: RawStoreItem, appid: number): GameInfo {
     storeUrl: `https://store.steampowered.com/${raw.store_url_path || `app/${id}`}`,
     capsule: assetUrl(fmt, raw.assets?.small_capsule),
     header: assetUrl(fmt, raw.assets?.header),
-    releaseDate: rel.is_coming_soon ? null : rel.steam_release_date ?? null,
+    releaseDate,
     releaseText,
     comingSoon,
     review: mapReview(raw.reviews),
