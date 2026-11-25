@@ -1,8 +1,8 @@
 <script lang="ts">
   /**
    * Avatar stack: round, slightly overlapping member avatars (leftmost on top) on a rounded,
-   * colour-coded rectangle. `owned` = owner stack (library), `wishlist` = wishlist stack.
-   * Trying two icon placements: owner icon inside the rectangle, wishlist icon on its left edge.
+   * colour-coded rectangle whose left edge carries the icon. `owned` = owner stack (library),
+   * `wishlist` = wishlist stack.
    */
   import type { Member } from '../lib/types';
   import { icons } from './icons';
@@ -35,18 +35,26 @@
 
 <style>
   .stack {
-    --edge: #8bc53f;
-    --fill: #d9eec2;
     position: relative;
     isolation: isolate;
     display: inline-flex;
     align-items: center;
     gap: 5px;
     height: 26px;
-    padding: 0 4px 0 6px;
+    margin-left: 9px;
+    padding: 0 5px 0 13px;
     font-size: 11px;
   }
-  /* The rectangle: opaque lighter fill, solid edge, rounded corners. */
+  .owned {
+    --edge: #8bc53f;
+    --fill: rgba(217, 238, 194, 0.1);
+  }
+  .wishlist {
+    --edge: #67c1f5;
+    --fill: rgba(210, 235, 251, 0.1);
+  }
+  /* The frame: 90% transparent fill, solid edge, rounded corners, with a round gap cut into the
+     left edge where the icon sits. */
   .stack::before {
     content: '';
     position: absolute;
@@ -55,33 +63,16 @@
     background: var(--fill);
     border: 1.5px solid var(--edge);
     border-radius: 7px;
-  }
-  .owned {
-    --edge: #8bc53f;
-    --fill: #d9eec2;
-  }
-  .owned .ico {
-    display: inline-flex;
-    color: #3d6b16;
-  }
-  .wishlist {
-    --edge: #67c1f5;
-    --fill: #d2ebfb;
-    margin-left: 9px;
-    padding-left: 13px;
-  }
-  /* Cut a round gap into the left edge so the icon interrupts the edge line. */
-  .wishlist::before {
     -webkit-mask: radial-gradient(circle 9px at 0 50%, transparent 8.5px, #000 9px);
     mask: radial-gradient(circle 9px at 0 50%, transparent 8.5px, #000 9px);
   }
-  .wishlist .ico {
+  .ico {
     position: absolute;
     left: 0;
     top: 50%;
     transform: translate(-50%, -50%);
     display: inline-flex;
-    color: #67c1f5;
+    color: var(--edge);
   }
   .faces {
     display: inline-flex;
@@ -94,8 +85,8 @@
     border-radius: 50%;
     overflow: hidden;
     flex: none;
-    /* ring in the fill colour so overlapping faces stay distinct */
-    box-shadow: 0 0 0 1.5px var(--fill);
+    /* thin dark ring so overlapping faces stay distinct */
+    box-shadow: 0 0 0 1.5px rgba(14, 20, 27, 0.95);
     background: #2a475e;
   }
   .face + .face {
@@ -117,7 +108,7 @@
     font-weight: 600;
   }
   .n {
-    color: #1b2838;
+    color: #c6d4df;
     font-weight: 600;
     padding: 0 2px;
   }

@@ -2,7 +2,9 @@
  * Background-worker side: every request that needs extension privileges (cross-site cookies for
  * store.steampowered.com, the viewer's web API token) runs here. The token never leaves this module.
  */
-import type { BgRequest, BgResponseMap, WishlistResult } from './messages';
+import { coOptimusUrl, parseCoOptimus } from './coop';
+import type { BgRequest, BgResponseMap, CoopResult, WishlistResult } from './messages';
+import { mapLimit } from './util';
 import {
   GET_ITEMS_BATCH,
   buildGetItemsUrl,
@@ -15,6 +17,8 @@ import {
 type Fetch = typeof fetch;
 
 const TOKEN_TTL_MS = 30 * 60 * 1000;
+/** Parallel requests to co-optimus. They publish no limit; keep it light. */
+const COOPTIMUS_CONCURRENCY = 2;
 
 export function createBackgroundHandlers(fetchImpl: Fetch = (input, init) => fetch(input, init)) {
   let token: { value: string | null; at: number } | null = null;
@@ -62,6 +66,21 @@ export function createBackgroundHandlers(fetchImpl: Fetch = (input, init) => fet
     return { entries, via: entries.length ? 'login' : null, loginAvailable: true };
   }
 
+  async function coop(appids: number[]): Promise<CoopResult> {
+    const result: CoopResult = { found: {}, failed: [] };
+    await mapLimit(appids, COOPTIMUS_CONCURRENCY, async (appid) => {
+      try {
+        const res = await fetchImpl(coOptimusUrl(appid), { credentials: 'omit' });
+        if (!res.ok) throw new Error(`co-optimus answered HTTP ${res.status}`);
+        result.found[appid] = parseCoOptimus(await res.text(), appid);
+      } catch (e) {
+        result.failed.push(appid);
+        result.lastError = e instanceof Error ? e.message : String(e);
+      }
+    });
+    return result;
+  }
+
   async function handle<K extends BgRequest['type']>(req: Extract<BgRequest, { type: K }>): Promise<BgResponseMap[K]>;
   async function handle(req: BgRequest): Promise<BgResponseMap[BgRequest['type']]> {
     switch (req.type) {
@@ -82,6 +101,8 @@ export function createBackgroundHandlers(fetchImpl: Fetch = (input, init) => fet
         }
         return out;
       }
+      case 'coop':
+        return coop(req.appids);
       case 'tags': {
         const json = (await getJson(
           `https://store.steampowered.com/tagdata/populartags/${encodeURIComponent(req.language)}`,

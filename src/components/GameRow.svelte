@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { GameRow, Member } from '../lib/types';
+  import { coopDetails, coopLabel } from '../lib/coop';
   import AvatarStack from './AvatarStack.svelte';
   import { icons, reviewTone } from './icons';
 
@@ -58,6 +59,8 @@
     </div>
   </div>
 
+  <div class="coop" title={row.coop ? coopDetails(row.coop) : undefined}>{coopLabel(row.coop)}</div>
+
   <div class="date">{info.releaseText}</div>
 
   <div class="review {tone}" title={reviewTitle}>
@@ -82,7 +85,7 @@
 <style>
   .row {
     display: grid;
-    grid-template-columns: 184px minmax(0, 1fr) 92px 124px 140px;
+    grid-template-columns: 184px minmax(0, 1fr) 104px 92px 124px 140px;
     align-items: center;
     gap: 12px;
     min-height: 69px;
@@ -162,7 +165,8 @@
     min-height: 22px;
     color: #8f98a0;
   }
-  .date {
+  .date,
+  .coop {
     color: #8f98a0;
     font-size: 12px;
     text-align: right;

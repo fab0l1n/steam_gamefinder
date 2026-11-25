@@ -1,11 +1,20 @@
 /** Typed messages between the content script and the background worker. */
-import type { GameInfo, ViewerStoreData, WishlistEntry } from './types';
+import type { CoopInfo, GameInfo, ViewerStoreData, WishlistEntry } from './types';
 
 export type BgRequest =
   | { type: 'viewerStore' }
   | { type: 'wishlist'; steamid: string; tryLogin: boolean }
   | { type: 'storeItems'; appids: number[]; language: string; country: string | null }
-  | { type: 'tags'; language: string };
+  | { type: 'tags'; language: string }
+  | { type: 'coop'; appids: number[] };
+
+export interface CoopResult {
+  /** appid -> counts, or null when co-optimus doesn't list it. */
+  found: Record<number, CoopInfo | null>;
+  /** appids whose lookup failed (not cached, retried next time). */
+  failed: number[];
+  lastError?: string;
+}
 
 export interface WishlistResult {
   entries: WishlistEntry[];
@@ -20,6 +29,7 @@ export type BgResponseMap = {
   wishlist: WishlistResult;
   storeItems: GameInfo[];
   tags: Record<number, string>;
+  coop: CoopResult;
 };
 
 export type BgEnvelope<T> = { ok: true; data: T } | { ok: false; error: string };

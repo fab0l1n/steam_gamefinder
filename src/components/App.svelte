@@ -135,6 +135,9 @@
       {:else}
         Showing {rows.length} of {snap.rows.length} games from the wishlists of {visibleMembers} of {snap.members.length} members
       {/if}
+      {#if snap.coopProgress && snap.coopProgress.done < snap.coopProgress.total}
+        <span>&nbsp;· loading co-op counts {snap.coopProgress.done}/{snap.coopProgress.total}</span>
+      {/if}
       {#if snap.error}<span class="warn">&nbsp;· {snap.error}</span>{/if}
     {:else}
       {snap.message}
@@ -175,7 +178,10 @@
     <HoverPreview row={hover.row} rect={hover.rect} {members} {tags} />
   {/if}
 
-  <div class="footer">Steam Gamefinder · data from Steam; prices for your store region</div>
+  <div class="footer">
+    Steam Gamefinder · game data from Steam (prices for your store region) · co-op player counts from
+    <a href="https://www.co-optimus.com/" target="_blank" rel="noopener noreferrer">co-optimus.com</a>
+  </div>
 </div>
 
 <style>
@@ -348,5 +354,8 @@
     margin-top: 16px;
     color: #556772;
     font-size: 11px;
+  }
+  .footer a {
+    color: #8f98a0;
   }
 </style>

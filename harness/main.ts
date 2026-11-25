@@ -46,6 +46,7 @@ function g(appid: number, name: string, hue: number, o: Partial<GameInfo> = {}):
     platforms: { windows: true, mac: false, linux: false, deck: 3 },
     tagids: [1, 2, 3, 4], screenshots: [art(name, hue + 20, 640, 360)],
     shortDescription: 'A story-rich, party-based RPG where your choices shape a tale of fellowship and betrayal.',
+    coopFlag: false,
     ...o,
   };
 }
@@ -76,7 +77,17 @@ const libraries = new Map([
   [LU, new Map([[1086940, 700]])],
   [RIN, new Map([[1086940, 4400]])],
 ]);
+const coop = (online: number, local = 0, lan = 0) => ({ source: 'co-optimus' as const, online, local, lan, splitscreen: local > 0, dropIn: true, campaign: true, url: null });
+const COOP: Record<number, ReturnType<typeof coop> | { source: 'steam'; online: 0; local: 0; lan: 0; splitscreen: false; dropIn: false; campaign: false; url: null }> = {
+  1086940: coop(4, 2, 4),
+  892970: coop(10, 0, 10),
+  4244510: coop(8),
+  4031890: { source: 'steam', online: 0, local: 0, lan: 0, splitscreen: false, dropIn: false, campaign: false, url: null },
+};
+for (const id of Object.keys(COOP)) games.get(Number(id))!.coopFlag = true;
 const rows = buildRows({ members, wishlists, libraries, games, viewer: { loggedIn: true, owned: [1086940, 730], wishlist: [892970, 3065800, 4244510, 2627260] } });
+
+for (const r of rows) r.coop = COOP[r.info.appid] ?? null;
 
 const done: LoadSnapshot = {
   phase: 'done', message: '', groupName: 'Spielpltz', members, rows,

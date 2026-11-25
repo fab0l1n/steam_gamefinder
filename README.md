@@ -15,6 +15,9 @@ everyone wants, what's on sale, and who already owns it.
   on the cover (same colours as Augmented Steam).
 - **Avatar stacks** on every row: the *owner stack* (who has it in their library, green) and the
   *wishlist stack* (who wants it, blue); up to 5 round avatars, the total count when there are more.
+- **Co-op column** left of the release date: "X Player Co-op" from co-optimus.com (online count, else
+  LAN/couch), looked up only for games Steam lists as co-op and cached for 30 days; plain "Co-op" when
+  Steam lists co-op but co-optimus has no entry. Details in the tooltip and hover preview.
 - **Review column**: rating icon (thumb up/down, `~` for mixed) with percent positive and number of reviews.
 - **Member status strip**: every member with what could be loaded (wishlist and library counts, hidden,
   needs sign-in, cached, failed) and why. Click a member to see only their wishlist.
@@ -23,11 +26,11 @@ everyone wants, what's on sale, and who already owns it.
 - **Sorting** (most wishlisted, discount, price, rating, release date, name) and toggles for DLC/hardware,
   hiding games you own, and loading libraries.
 - **Filter sidebar** like Steam search with Augmented Steam: review score range, review count, discount
-  percent, maximum price, and user tags (tick to require, `−` to exclude; counts update with the other filters).
+  percent, price range (two knobs), and user tags (tick to require, `−` to exclude; counts update with the other filters).
   The view is wider than Steam's group column (up to 1240 px) to fit the sidebar; below 1100 px the
   filters move above the list.
 
-Not yet: co-op player counts (co-optimus). See the concept doc's roadmap.
+Next ideas: a "playable together" filter (co-op count ≥ group size), saved filters.
 
 ## Install for development
 
@@ -70,14 +73,15 @@ group page (content script)                 background worker
   ├─ /groups/<name>/memberslistxml           ├─ IStoreBrowseService/GetItems                    (200 apps per call)
   ├─ /profiles/<id>/?xml=1                   └─ store /tagdata/populartags                      (tag names)
   └─ /profiles/<id>/games/?tab=all  (libraries; needs you signed in)
+                                             └─ api.co-optimus.com/games.php?steam=<appid>  (co-op counts, 2 at a time)
 ```
 
 - steamcommunity.com only allows the page to talk to Steam hosts (CSP), and store cookies are third-party
   there, so cookie-bound and cross-site calls run in the background worker.
 - Your Steam web token is fetched and used only inside the background worker and only sent to Steam.
 - Everything is cached in `browser.storage.local`: members 1 h, wishlists 1 h, libraries 24 h, game details
-  3 h, your store data 10 min, tag names 7 days. *Refresh* ignores the cache.
-- No data leaves your browser except requests to Steam. No analytics.
+  3 h, your store data 10 min, tag names 7 days, co-op counts 30 days. *Refresh* ignores the cache.
+- No data leaves your browser except requests to Steam and co-optimus (only Steam AppIDs). No analytics.
 
 ## Privacy settings that matter
 

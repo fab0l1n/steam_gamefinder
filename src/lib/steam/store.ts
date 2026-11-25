@@ -3,6 +3,8 @@ import type { GameInfo, PriceInfo, ReviewSummary, WishlistEntry } from '../types
 
 export const STORE_ASSET_BASE = 'https://shared.akamai.steamstatic.com/store_item_assets/';
 export const GET_ITEMS_BATCH = 200;
+/** Steam store categories: 9 Co-op, 38 Online Co-op, 48 LAN Co-op, 39 Shared/Split Screen Co-op. */
+export const COOP_CATEGORIES = new Set([9, 38, 48, 39]);
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -79,6 +81,7 @@ interface RawStoreItem {
     hide_discount_pct_for_compliance?: boolean;
   };
   basic_info?: { short_description?: string };
+  categories?: { supported_player_categoryids?: number[] };
   screenshots?: { all_ages_screenshots?: { filename?: string }[] };
 }
 
@@ -148,6 +151,7 @@ export function mapStoreItem(raw: RawStoreItem, appid: number): GameInfo {
       .map((s) => (s.filename ? STORE_ASSET_BASE + s.filename : ''))
       .filter(Boolean),
     shortDescription: raw.basic_info?.short_description ?? '',
+    coopFlag: (raw.categories?.supported_player_categoryids ?? []).some((c) => COOP_CATEGORIES.has(c)),
   };
 }
 

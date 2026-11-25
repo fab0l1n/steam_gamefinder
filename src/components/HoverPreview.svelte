@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { GameRow, Member } from '../lib/types';
   import { formatReleaseDate } from '../lib/steam/store';
+  import { coopDetails, coopLabel } from '../lib/coop';
 
   let {
     row,
@@ -40,6 +41,13 @@
       <div class="label">Overall user reviews</div>
       <div class="rev">{info.review.label}</div>
       <div class="muted">({info.review.percent}% of {info.review.count.toLocaleString('en-US')} reviews are positive)</div>
+    </div>
+  {/if}
+  {#if row.coop}
+    <div class="block">
+      <div class="label">Co-op</div>
+      <div>{coopLabel(row.coop)}</div>
+      <div class="muted">{coopDetails(row.coop)}</div>
     </div>
   {/if}
   {#if tagNames.length}

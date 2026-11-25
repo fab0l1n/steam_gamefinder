@@ -3,10 +3,11 @@
  * flow can be unit-tested and reused by the UI harness.
  */
 import { buildRows, unionAppids } from './aggregate';
+import { mapLimit } from './util';
 import { errorText, type Cache } from './cache';
 import type { BgRequest, BgResponseMap, WishlistResult } from './messages';
 import { parseMembersXml, parseOwnedGamesPage, parseProfileXml, type PageContext } from './steam/community';
-import type { GameInfo, LoadSnapshot, Member, SourceStatus, SteamId, ViewerStoreData, WishlistEntry } from './types';
+import type { CoopInfo, GameInfo, LoadSnapshot, Member, SourceStatus, SteamId, ViewerStoreData, WishlistEntry } from './types';
 
 export const TTL = {
   members: 60 * 60e3,
@@ -16,7 +17,11 @@ export const TTL = {
   viewerStore: 10 * 60e3,
   storeItem: 3 * 60 * 60e3,
   tags: 7 * 24 * 60 * 60e3,
+  coop: 30 * 24 * 60 * 60e3,
 };
+
+/** Co-op lookups per background call (the background runs them two at a time). */
+const COOP_CHUNK = 10;
 
 const MAX_MEMBER_PAGES = 10;
 
@@ -33,18 +38,7 @@ export interface LoaderDeps {
   now?: () => number;
 }
 
-export async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const i = next++;
-      out[i] = await fn(items[i], i);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-  return out;
-}
+export { mapLimit };
 
 function status(state: SourceStatus['state'], extra: Partial<SourceStatus> = {}): SourceStatus {
   return { state, ...extra };
@@ -211,8 +205,8 @@ export async function loadGroup(
   snap.message = `Loading details for ${appids.length} games…`;
   push();
 
-  // "app2": entries now carry up to 20 tags (was 8), so older cache entries are ignored.
-  const keyOf = (appid: number) => `app2:${page.language}:${page.country ?? 'auto'}:${appid}`;
+  // "app3": entries carry up to 20 tags and the co-op flag, so older cache entries are ignored.
+  const keyOf = (appid: number) => `app3:${page.language}:${page.country ?? 'auto'}:${appid}`;
   const games = new Map<number, GameInfo>();
   const cachedApps = await cache.getMany<GameInfo>(appids.map(keyOf));
   const missing: number[] = [];
@@ -231,14 +225,56 @@ export async function loadGroup(
     }
   }
 
-  // 6. Rows.
+  // 6. Rows (shown right away; co-op counts fill in afterwards).
   snap.rows = buildRows({ members: snap.members, wishlists, libraries, games, viewer });
+  for (const r of snap.rows) if (!r.info.coopFlag) r.coop = null;
   snap.phase = 'done';
   const visible = snap.members.filter((m) => m.wishlist.state === 'ok').length;
   snap.message = `${snap.rows.length} games from the wishlists of ${visible} of ${snap.members.length} members`;
   snap.updatedAt = now();
+
+  // 7. Co-op player counts from co-optimus, only for games Steam lists as co-op (cached 30 days).
+  const coopRows = snap.rows.filter((r) => r.info.coopFlag);
+  const coopKey = (appid: number) => `coop:${appid}`;
+  const cachedCoop = await cache.getMany<CoopInfo | null>(coopRows.map((r) => coopKey(r.info.appid)));
+  const missingCoop: number[] = [];
+  const applyCoop = (appid: number, c: CoopInfo | null) => {
+    for (const r of snap.rows) if (r.info.appid === appid) r.coop = c ?? steamOnlyCoop();
+  };
+  for (const r of coopRows) {
+    const hit = cachedCoop.get(coopKey(r.info.appid));
+    if (hit) applyCoop(r.info.appid, hit.v);
+    if (!hit || force || now() - hit.t >= TTL.coop) missingCoop.push(r.info.appid);
+  }
+  snap.coopProgress = { done: coopRows.length - missingCoop.length, total: coopRows.length, failed: 0 };
   push();
+
+  for (let i = 0; i < missingCoop.length; i += COOP_CHUNK) {
+    const batch = missingCoop.slice(i, i + COOP_CHUNK);
+    try {
+      const res = await deps.bg({ type: 'coop', appids: batch });
+      const fresh = new Map<string, CoopInfo | null>();
+      for (const appid of batch) {
+        if (appid in res.found) {
+          applyCoop(appid, res.found[appid]);
+          fresh.set(coopKey(appid), res.found[appid]);
+        }
+      }
+      await cache.setMany(fresh);
+      snap.coopProgress.failed += res.failed.length;
+      if (res.failed.length) snap.error = `Some co-op counts could not be loaded: ${res.lastError ?? 'unknown error'}`;
+    } catch (e) {
+      snap.coopProgress.failed += batch.length;
+      snap.error = `Some co-op counts could not be loaded: ${errorText(e)}`;
+    }
+    snap.coopProgress.done += batch.length;
+    push();
+  }
   return snap;
+}
+
+function steamOnlyCoop(): CoopInfo {
+  return { source: 'steam', online: 0, local: 0, lan: 0, splitscreen: false, dropIn: false, campaign: false, url: null };
 }
 
 export async function loadTags(deps: Pick<LoaderDeps, 'bg' | 'cache' | 'page'>): Promise<Record<number, string>> {

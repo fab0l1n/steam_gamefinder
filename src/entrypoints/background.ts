@@ -1,7 +1,7 @@
 import { createBackgroundHandlers } from '@/lib/background-handlers';
 import type { BgEnvelope, BgRequest } from '@/lib/messages';
 
-const KNOWN = new Set<BgRequest['type']>(['viewerStore', 'wishlist', 'storeItems', 'tags']);
+const KNOWN = new Set<BgRequest['type']>(['viewerStore', 'wishlist', 'storeItems', 'tags', 'coop']);
 
 function isRequest(msg: unknown): msg is BgRequest {
   if (!msg || typeof msg !== 'object') return false;
@@ -9,6 +9,7 @@ function isRequest(msg: unknown): msg is BgRequest {
   if (!KNOWN.has(m.type as BgRequest['type'])) return false;
   if (m.type === 'wishlist') return typeof m.steamid === 'string' && /^\d{17}$/.test(m.steamid);
   if (m.type === 'storeItems') return Array.isArray(m.appids) && m.appids.every((a) => Number.isInteger(a)) && typeof m.language === 'string';
+  if (m.type === 'coop') return Array.isArray(m.appids) && m.appids.length <= 50 && m.appids.every((a) => Number.isInteger(a));
   if (m.type === 'tags') return typeof m.language === 'string' && /^[a-z]+$/.test(m.language);
   return true;
 }

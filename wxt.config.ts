@@ -13,6 +13,7 @@ export default defineConfig({
       'https://steamcommunity.com/*',
       'https://store.steampowered.com/*',
       'https://api.steampowered.com/*',
+      'https://api.co-optimus.com/*',
     ],
     ...(browser === 'firefox'
       ? {

@@ -9,6 +9,8 @@ export interface Filters {
   countMax: number | null;
   discountMin: number | null;
   discountMax: number | null;
+  /** In the currency's minor unit; null = no minimum. */
+  priceMinCents: number | null;
   /** In the currency's minor unit; null = any price, 0 = free only. */
   priceMaxCents: number | null;
   tagsInclude: number[];
@@ -22,6 +24,7 @@ export const EMPTY_FILTERS: Filters = {
   countMax: null,
   discountMin: null,
   discountMax: null,
+  priceMinCents: null,
   priceMaxCents: null,
   tagsInclude: [],
   tagsExclude: [],
@@ -35,6 +38,7 @@ export function filtersActive(f: Filters): boolean {
     f.countMax != null ||
     f.discountMin != null ||
     f.discountMax != null ||
+    f.priceMinCents != null ||
     f.priceMaxCents != null ||
     f.tagsInclude.length > 0 ||
     f.tagsExclude.length > 0
@@ -54,8 +58,10 @@ export function matchesFilters(row: GameRow, f: Filters, opts: { ignoreTags?: bo
   if (f.discountMin != null && pct < f.discountMin) return false;
   if (f.discountMax != null && pct > f.discountMax) return false;
 
-  if (f.priceMaxCents != null) {
-    if (!price || price.finalCents == null || price.finalCents > f.priceMaxCents) return false;
+  if (f.priceMinCents != null || f.priceMaxCents != null) {
+    if (!price || price.finalCents == null) return false;
+    if (f.priceMinCents != null && price.finalCents < f.priceMinCents) return false;
+    if (f.priceMaxCents != null && price.finalCents > f.priceMaxCents) return false;
   }
 
   if (!opts.ignoreTags) {
@@ -95,8 +101,11 @@ export function priceFormatter(rows: GameRow[]): (cents: number) => string {
   return (cents) => `${prefix}${Math.round(cents / 100)}${suffix}`;
 }
 
-export function priceLabel(cents: number | null, fmt: (cents: number) => string): string {
-  if (cents == null || cents === Infinity) return 'Any Price';
-  if (cents === 0) return 'Free';
-  return `Under ${fmt(cents)}`;
+export function priceLabel(min: number | null, max: number | null, fmt: (cents: number) => string): string {
+  const noMin = min == null || min <= 0;
+  const noMax = max == null || max === Infinity;
+  if (noMin && noMax) return 'Any Price';
+  if (noMin) return max === 0 ? 'Free' : `Under ${fmt(max as number)}`;
+  if (noMax) return `${fmt(min as number)} and up`;
+  return `${fmt(min as number)} – ${fmt(max as number)}`;
 }

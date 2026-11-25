@@ -103,6 +103,20 @@ export interface GameInfo {
   tagids: number[];
   screenshots: string[];
   shortDescription: string;
+  /** Steam lists a co-op category (Co-op, Online/LAN/Split Screen Co-op). */
+  coopFlag: boolean;
+}
+
+/** Co-op player counts. `source: 'steam'` = Steam says co-op but co-optimus has no entry (counts 0). */
+export interface CoopInfo {
+  source: 'co-optimus' | 'steam';
+  online: number;
+  local: number;
+  lan: number;
+  splitscreen: boolean;
+  dropIn: boolean;
+  campaign: boolean;
+  url: string | null;
 }
 
 export interface ViewerStoreData {
@@ -118,6 +132,8 @@ export interface GameRow {
   ownedBy: { steamid: SteamId; playtime: number }[];
   viewerOwns: boolean;
   viewerWishlisted: boolean;
+  /** undefined = not looked up (yet), null = not a co-op game. */
+  coop?: CoopInfo | null;
 }
 
 export interface LoadSnapshot {
@@ -129,4 +145,6 @@ export interface LoadSnapshot {
   viewer: { steamid: SteamId | null; loggedIn: boolean };
   updatedAt: number | null;
   error?: string;
+  /** Co-op lookups for co-op games, filled in after the list is shown. */
+  coopProgress?: { done: number; total: number; failed: number };
 }

@@ -48,6 +48,8 @@ describe('filters', () => {
     expect(ids({ discountMax: 40 })).toEqual([1, 3, 4]);
     expect(ids({ priceMaxCents: 3000 })).toEqual([2, 4]);
     expect(ids({ priceMaxCents: 0 })).toEqual([4]);
+    expect(ids({ priceMinCents: 3000 })).toEqual([1]);
+    expect(ids({ priceMinCents: 2000, priceMaxCents: 3000 })).toEqual([2]);
   });
   it('includes all selected tags and excludes the excluded ones', () => {
     expect(ids({ tagsInclude: [2] })).toEqual([1, 2]);
@@ -64,9 +66,11 @@ describe('filters', () => {
     expect(steps.slice(0, 3)).toEqual([0, 500, 1000]);
     expect(steps.at(-1)).toBe(Infinity);
     const fmt = priceFormatter(rows);
-    expect(priceLabel(1000, fmt)).toBe('Under 10€');
-    expect(priceLabel(0, fmt)).toBe('Free');
-    expect(priceLabel(null, fmt)).toBe('Any Price');
+    expect(priceLabel(null, 1000, fmt)).toBe('Under 10€');
+    expect(priceLabel(null, 0, fmt)).toBe('Free');
+    expect(priceLabel(null, null, fmt)).toBe('Any Price');
+    expect(priceLabel(2000, null, fmt)).toBe('20€ and up');
+    expect(priceLabel(1000, 3000, fmt)).toBe('10€ – 30€');
     const yen = [row(9, { best_purchase_option: { final_price_in_cents: 498000, formatted_final_price: '¥ 4,980', discount_pct: 0 } })];
     expect(priceSteps(yen)[1]).toBe(500 * 100); // ¥500 (Steam reports yen ×100 too)
     expect(priceFormatter(yen)(50000)).toBe('¥ 500');

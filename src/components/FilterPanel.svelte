@@ -24,9 +24,10 @@
   const reviewLabel = $derived(
     filters.reviewMin <= 0 && filters.reviewMax >= 100 ? 'Any review score' : `${filters.reviewMin}% – ${filters.reviewMax}% positive`,
   );
-  const priceIndex = $derived(
-    filters.priceMaxCents == null ? steps.length - 1 : Math.max(0, steps.findIndex((s) => s >= (filters.priceMaxCents as number))),
-  );
+  const indexOf = (cents: number) => Math.max(0, steps.findIndex((s) => s >= cents));
+  const priceMinIndex = $derived(filters.priceMinCents == null ? 0 : indexOf(filters.priceMinCents));
+  const priceMaxIndex = $derived(filters.priceMaxCents == null ? steps.length - 1 : indexOf(filters.priceMaxCents));
+  const pctOf = (i: number) => (i / (steps.length - 1)) * 100;
 
   const counts = $derived(tagCounts(tagRows).filter(([t]) => tagNames[t]));
   const pinned = $derived([...filters.tagsInclude, ...filters.tagsExclude]);
@@ -48,9 +49,14 @@
     if (which === 'min') filters.reviewMin = Math.min(v, filters.reviewMax);
     else filters.reviewMax = Math.max(v, filters.reviewMin);
   }
-  function setPrice(i: number) {
-    const s = steps[i];
-    filters.priceMaxCents = s === Infinity ? null : s;
+  function setPrice(which: 'min' | 'max', i: number) {
+    if (which === 'min') {
+      const idx = Math.min(i, priceMaxIndex);
+      filters.priceMinCents = idx === 0 ? null : steps[idx];
+    } else {
+      const idx = Math.max(i, priceMinIndex);
+      filters.priceMaxCents = steps[idx] === Infinity ? null : steps[idx];
+    }
   }
   function toggleInclude(t: number) {
     filters.tagsExclude = filters.tagsExclude.filter((x) => x !== t);
@@ -73,7 +79,7 @@
     <div class="body">
       <div class="dual" style:--lo="{filters.reviewMin}%" style:--hi="{filters.reviewMax}%">
         <div class="track"></div>
-        <input type="range" min="0" max="100" step="5" value={filters.reviewMin}
+        <input type="range" min="0" max="100" step="5" value={filters.reviewMin} style:z-index={filters.reviewMin > 50 ? 3 : 1}
           aria-label="Minimum percent positive" oninput={(e) => setReview('min', +e.currentTarget.value)} />
         <input type="range" min="0" max="100" step="5" value={filters.reviewMax}
           aria-label="Maximum percent positive" oninput={(e) => setReview('max', +e.currentTarget.value)} />
@@ -103,12 +109,15 @@
   <section>
     <h3>Narrow by Price</h3>
     <div class="body">
-      <div class="single" style:--hi="{(priceIndex / (steps.length - 1)) * 100}%">
+      <div class="dual" style:--lo="{pctOf(priceMinIndex)}%" style:--hi="{pctOf(priceMaxIndex)}%">
         <div class="track"></div>
-        <input type="range" min="0" max={steps.length - 1} step="1" value={priceIndex}
-          aria-label="Maximum price" oninput={(e) => setPrice(+e.currentTarget.value)} />
+        <input type="range" min="0" max={steps.length - 1} step="1" value={priceMinIndex}
+          style:z-index={priceMinIndex > (steps.length - 1) / 2 ? 3 : 1}
+          aria-label="Minimum price" oninput={(e) => setPrice('min', +e.currentTarget.value)} />
+        <input type="range" min="0" max={steps.length - 1} step="1" value={priceMaxIndex}
+          aria-label="Maximum price" oninput={(e) => setPrice('max', +e.currentTarget.value)} />
       </div>
-      <div class="center">{priceLabel(filters.priceMaxCents, fmt)}</div>
+      <div class="center">{priceLabel(filters.priceMinCents, filters.priceMaxCents, fmt)}</div>
     </div>
   </section>
 
@@ -204,10 +213,12 @@
   }
 
   /* Range sliders: two overlaid inputs for a min/max range, one for price. */
-  .dual,
-  .single {
+  .dual {
     position: relative;
     height: 22px;
+  }
+  .dual input[type='range'] {
+    z-index: 2;
   }
   .track {
     position: absolute;
@@ -251,6 +262,15 @@
     background: #fff;
     border: 2px solid #1b2838;
     cursor: pointer;
+  }
+  input[type='range']:focus {
+    outline: none;
+  }
+  input[type='range']:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 3px rgba(103, 193, 245, 0.55);
+  }
+  input[type='range']:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 3px rgba(103, 193, 245, 0.55);
   }
   input[type='range']::-moz-range-thumb {
     pointer-events: auto;
