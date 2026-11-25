@@ -1,6 +1,12 @@
 <script lang="ts">
   /** Debug panel: a read-only text box with everything the loader logged, plus copy/clear. */
-  let { lines, onclear, open = $bindable(false) }: { lines: string[]; onclear: () => void; open?: boolean } = $props();
+  let {
+    lines,
+    onclear,
+    onrecheck,
+    busy = false,
+    open = $bindable(false),
+  }: { lines: string[]; onclear: () => void; onrecheck: () => void; busy?: boolean; open?: boolean } = $props();
 
   let box = $state<HTMLTextAreaElement>();
   let copied = $state(false);
@@ -30,6 +36,7 @@
     </button>
     {#if open}
       <span class="actions">
+        <button onclick={onrecheck} disabled={busy} title="Look up every co-op game on co-optimus again (normally cached for 30 days)">Re-check co-op</button>
         <button onclick={copy}>{copied ? 'Copied' : 'Copy'}</button>
         <button onclick={onclear}>Clear</button>
       </span>
@@ -61,8 +68,12 @@
     cursor: pointer;
     padding: 2px 4px;
   }
-  button:hover {
+  button:hover:not(:disabled) {
     color: #fff;
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: default;
   }
   .n {
     color: #556772;

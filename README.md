@@ -90,7 +90,8 @@ group page (content script)                 background worker
   there, so cookie-bound and cross-site calls run in the background worker.
 - Your Steam web token is fetched and used only inside the background worker and only sent to Steam.
 - Everything is cached in `browser.storage.local`: members 1 h, wishlists 1 h, libraries 24 h, game details
-  3 h, your store data 10 min, tag names 7 days, co-op counts 30 days. *Refresh* ignores the cache.
+  3 h, your store data 10 min, tag names 7 days, co-op counts 30 days. *Refresh* ignores the Steam caches but keeps co-op counts;
+  *Re-check co-op* in the debug log looks those up again.
 - No data leaves your browser except requests to Steam and co-optimus (only Steam AppIDs). No analytics.
 
 ## Privacy settings that matter

@@ -98,7 +98,7 @@ const done: LoadSnapshot = {
 let settings: UiSettings = { ...DEFAULT_SETTINGS };
 let presets: Preset[] = [{ id: 'p1', name: 'Co-op crew', steamids: [ME, VITU, KAI] }];
 const source: DataSource = {
-  async load(_force, _s, emit, log) {
+  async load(_force, _s, emit, log, _opts) {
     log('Load started (cache allowed) · viewer 76561190000000001 · english/DE');
     log('Members: 7 in "Spielpltz" (cache)');
     log('Co-op 1812450 Bellwright: not in the API; website /game/14752/pc/bellwright.html → 4 Player Co-op');

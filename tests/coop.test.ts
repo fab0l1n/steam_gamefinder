@@ -116,6 +116,17 @@ describe('co-op lookups', () => {
     bg.mockClear();
     await loadGroup(deps, { force: false }, () => {});
     expect(bg.mock.calls.some(([r]) => r.type === 'coop')).toBe(false);
+
+    // Refresh (force) reloads Steam data but keeps the co-op cache…
+    bg.mockClear();
+    await loadGroup(deps, { force: true }, () => {});
+    expect(bg.mock.calls.some(([r]) => r.type === 'storeItems')).toBe(true);
+    expect(bg.mock.calls.some(([r]) => r.type === 'coop')).toBe(false);
+
+    // …and only an explicit re-check looks co-op counts up again.
+    bg.mockClear();
+    await loadGroup(deps, { force: false, recheckCoop: true }, () => {});
+    expect(bg.mock.calls.filter(([r]) => r.type === 'coop')).toHaveLength(1);
   });
 });
 

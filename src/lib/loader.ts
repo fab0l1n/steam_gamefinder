@@ -48,7 +48,8 @@ function status(state: SourceStatus['state'], extra: Partial<SourceStatus> = {})
 
 export async function loadGroup(
   deps: LoaderDeps,
-  opts: { force: boolean },
+  /** `force`: ignore the Steam caches (Refresh). `recheckCoop`: redo co-op lookups (they're otherwise kept 30 days). */
+  opts: { force: boolean; recheckCoop?: boolean },
   emit: (s: LoadSnapshot) => void,
 ): Promise<LoadSnapshot> {
   const { cache, page, force } = { ...deps, force: opts.force };
@@ -56,7 +57,7 @@ export async function loadGroup(
   const log = deps.log ?? (() => {});
   const t0 = now();
   const src = (r: { fromCache: boolean; stale: boolean }) => (r.stale ? 'stale cache' : r.fromCache ? 'cache' : 'Steam');
-  log(`Load started (${force ? 'refresh, cache ignored' : 'cache allowed'}) · viewer ${page.viewerSteamId ?? 'not signed in'} · ${page.language}/${page.country ?? 'no country'}`);
+  log(`Load started (${force ? 'refresh, Steam cache ignored' : 'cache allowed'}${opts.recheckCoop ? ', co-op re-check' : ''}) · viewer ${page.viewerSteamId ?? 'not signed in'} · ${page.language}/${page.country ?? 'no country'}`);
   const snap: LoadSnapshot = {
     phase: 'members',
     message: 'Loading group members…',
@@ -262,10 +263,17 @@ export async function loadGroup(
   for (const r of coopRows) {
     const hit = cachedCoop.get(coopKey(r.info.appid));
     if (hit) applyCoop(r.info.appid, hit.v);
-    if (!hit || force || now() - hit.t >= TTL.coop) missingCoop.push(r.info.appid);
+    // Co-op counts rarely change and the website fallback is slow, so Refresh keeps them; only an
+    // explicit re-check or the 30-day expiry looks them up again.
+    if (!hit || opts.recheckCoop || now() - hit.t >= TTL.coop) missingCoop.push(r.info.appid);
   }
   snap.coopProgress = { done: coopRows.length - missingCoop.length, total: coopRows.length, failed: 0 };
-  log(`Co-op: ${coopRows.length} games Steam lists as co-op, ${coopRows.length - missingCoop.length} cached, ${missingCoop.length} to look up`);
+  const cachedTimes = [...cachedCoop.values()].map((e) => e.t);
+  const oldest = cachedTimes.length ? new Date(Math.min(...cachedTimes)).toLocaleDateString() : null;
+  log(
+    `Co-op: ${coopRows.length} games Steam lists as co-op, ${coopRows.length - missingCoop.length} from the local cache` +
+      `${oldest ? ` (oldest ${oldest})` : ''}, ${missingCoop.length} to look up`,
+  );
   push();
   const nameOf = new Map(snap.rows.map((r) => [r.info.appid, r.info.available ? r.info.name : '']));
 

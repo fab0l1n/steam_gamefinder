@@ -21,7 +21,13 @@ export const DEFAULT_SETTINGS: UiSettings = {
 };
 
 export interface DataSource {
-  load(force: boolean, settings: UiSettings, emit: (s: LoadSnapshot) => void, log: (line: string) => void): Promise<void>;
+  load(
+    force: boolean,
+    settings: UiSettings,
+    emit: (s: LoadSnapshot) => void,
+    log: (line: string) => void,
+    opts?: { recheckCoop?: boolean },
+  ): Promise<void>;
   tags(): Promise<Record<number, string>>;
   getSettings(): Promise<UiSettings>;
   saveSettings(s: UiSettings): Promise<void>;

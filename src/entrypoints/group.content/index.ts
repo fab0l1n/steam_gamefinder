@@ -132,16 +132,17 @@ function createExtensionSource(groupBase: string): DataSource {
   async function pruneDaily() {
     const last = ((await local.get(PRUNE_KEY))[PRUNE_KEY] as number | undefined) ?? 0;
     if (Date.now() - last < 24 * 60 * 60e3) return;
-    await cache.prune(14 * 24 * 60 * 60e3);
+    // Longer than the longest TTL (co-op counts: 30 days), so nothing is dropped before it expires.
+    await cache.prune(31 * 24 * 60 * 60e3);
     await local.set({ [PRUNE_KEY]: Date.now() });
   }
 
   return {
-    async load(force, settings, emit, log) {
+    async load(force, settings, emit, log, opts) {
       log(`Steam Gamefinder ${browser.runtime.getManifest().version} on ${groupBase}`);
       await loadGroup(
         { groupBase, page, fetchText, bg, cache, log, settings: { loadLibraries: settings.loadLibraries } },
-        { force },
+        { force, recheckCoop: opts?.recheckCoop },
         emit,
       );
       pruneDaily().catch(() => {});

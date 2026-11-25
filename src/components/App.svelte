@@ -62,12 +62,12 @@
     if (logLines.length > 3000) logLines.splice(0, logLines.length - 3000);
   }
 
-  async function run(force: boolean) {
+  async function run(force: boolean, recheckCoop = false) {
     if (busy) return;
     busy = true;
     hover = null;
     try {
-      await source.load(force, $state.snapshot(settings), (s) => (snap = s), log);
+      await source.load(force, $state.snapshot(settings), (s) => (snap = s), log, { recheckCoop });
     } catch (e) {
       log(`Load failed: ${String(e)}`);
       snap = snap
@@ -120,13 +120,13 @@
 </script>
 
 <div class="sgf" onscroll={onRowLeave}>
-  <DebugLog lines={logLines} onclear={() => (logLines = [])} bind:open={settings.debugOpen} />
+  <DebugLog lines={logLines} onclear={() => (logLines = [])} onrecheck={() => run(false, true)} {busy} bind:open={settings.debugOpen} />
 
   <div class="head">
     <h2>Wishlists{#if snap?.groupName}<span class="group">&nbsp;· {snap.groupName}</span>{/if}</h2>
     <div class="updated">
       {#if snap?.updatedAt}Updated {ago(snap.updatedAt)}{/if}
-      <button class="btn" onclick={() => run(true)} disabled={busy} title="Reload everything from Steam, ignoring the cache">
+      <button class="btn" onclick={() => run(true)} disabled={busy} title="Reload everything from Steam, ignoring the cache. Co-op counts stay cached (30 days); re-check them from the debug log.">
         {@html icons.refresh} Refresh
       </button>
     </div>
