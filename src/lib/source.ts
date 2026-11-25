@@ -8,6 +8,8 @@ export interface UiSettings {
   includeExtras: boolean;
   hideOwned: boolean;
   loadLibraries: boolean;
+  /** Debug log panel expanded. */
+  debugOpen: boolean;
 }
 
 export const DEFAULT_SETTINGS: UiSettings = {
@@ -15,6 +17,7 @@ export const DEFAULT_SETTINGS: UiSettings = {
   includeExtras: false,
   hideOwned: false,
   loadLibraries: true,
+  debugOpen: false,
 };
 
 export interface DataSource {

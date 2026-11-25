@@ -120,6 +120,8 @@
 </script>
 
 <div class="sgf" onscroll={onRowLeave}>
+  <DebugLog lines={logLines} onclear={() => (logLines = [])} bind:open={settings.debugOpen} />
+
   <div class="head">
     <h2>Wishlists{#if snap?.groupName}<span class="group">&nbsp;· {snap.groupName}</span>{/if}</h2>
     <div class="updated">
@@ -241,8 +243,6 @@
       oncancel={() => (dialog = null)}
     />
   {/if}
-
-  <DebugLog lines={logLines} onclear={() => (logLines = [])} />
 
   <div class="footer">
     Steam Gamefinder · game data from Steam (prices for your store region) · co-op player counts from

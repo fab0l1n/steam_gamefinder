@@ -1,8 +1,7 @@
 <script lang="ts">
   /** Debug panel: a read-only text box with everything the loader logged, plus copy/clear. */
-  let { lines, onclear }: { lines: string[]; onclear: () => void } = $props();
+  let { lines, onclear, open = $bindable(false) }: { lines: string[]; onclear: () => void; open?: boolean } = $props();
 
-  let open = $state(true);
   let box = $state<HTMLTextAreaElement>();
   let copied = $state(false);
 
@@ -43,7 +42,7 @@
 
 <style>
   .debug {
-    margin-top: 18px;
+    margin: 0 0 12px;
     background: rgba(0, 0, 0, 0.25);
     border: 1px solid #2a3f5a;
   }

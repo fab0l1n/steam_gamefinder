@@ -28,7 +28,7 @@ everyone wants, what's on sale, and who already owns it.
   members. The list shows games any selected member has on their wishlist or in their library.
 - **Presets** above the members: *All*, your saved presets, and *+* to save the current selection under
   a name. Right-click a saved preset to remove it (asks first). Stored per group in your browser.
-- **Debug log** at the bottom: what was loaded from where (cache or Steam), per-member results and every
+- **Debug log** at the top (collapsed by default, remembers its state): what was loaded from where (cache or Steam), per-member results and every
   co-op lookup. *Copy* puts it on the clipboard for bug reports.
 - **Hover preview**: screenshot, reviews, tags, description, who wishlisted it since when, who owns it
   and how long they played.
