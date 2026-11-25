@@ -47,9 +47,10 @@ describe('co-optimus parsing', () => {
     expect(parseCoOptimus(coOptimusXml([{ system: 'PC', steam: 5, online: 2 }]), 6)).toBeNull();
   });
 
-  it('labels couch-only games by their local count and Steam-only co-op without a number', () => {
+  it('labels couch-only games by their local count; no label without a co-optimus number', () => {
     expect(coopLabel({ source: 'co-optimus', online: 0, local: 2, lan: 0, splitscreen: true, dropIn: false, campaign: true, url: null })).toBe('2 Player Co-op');
-    expect(coopLabel({ source: 'steam', online: 0, local: 0, lan: 0, splitscreen: false, dropIn: false, campaign: false, url: null })).toBe('Co-op');
+    expect(coopLabel({ source: 'steam', online: 0, local: 0, lan: 0, splitscreen: false, dropIn: false, campaign: false, url: null })).toBe('');
+    expect(coopLabel({ source: 'co-optimus', online: 0, local: 0, lan: 0, splitscreen: false, dropIn: false, campaign: false, url: null })).toBe('');
     expect(coopLabel(null)).toBe('');
   });
 });

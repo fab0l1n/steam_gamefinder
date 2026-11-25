@@ -16,8 +16,8 @@ everyone wants, what's on sale, and who already owns it.
 - **Avatar stacks** on every row: the *owner stack* (who has it in their library, green) and the
   *wishlist stack* (who wants it, blue); up to 5 round avatars, the total count when there are more.
 - **Co-op column** left of the release date: "X Player Co-op" from co-optimus.com (online count, else
-  LAN/couch), looked up only for games Steam lists as co-op and cached for 30 days; plain "Co-op" when
-  Steam lists co-op but co-optimus has no entry. Details in the tooltip and hover preview.
+  LAN/couch), looked up only for games Steam lists as co-op and cached for 30 days. Shown only when
+  co-optimus has a player count; otherwise the column stays empty. Details in the tooltip and hover preview.
   Lookup order: co-optimus API by Steam AppID → API by title → the co-optimus website (the API misses
   newer games): `/related-news/<title-slug>` → the game page, accepted only if it links the same Steam
   app. Website requests are paced 1 s apart as their robots.txt asks.

@@ -17,6 +17,7 @@
   } = $props();
 
   const info = $derived(row.info);
+  const coop = $derived(coopLabel(row.coop));
   const highlight = $derived(row.viewerOwns ? 'owned' : row.viewerWishlisted ? 'wish' : '');
   const tone = $derived(reviewTone(info.review?.score ?? 0));
   const reviewIcon = $derived(tone === 'negative' ? icons.thumbDown : tone === 'mixed' ? icons.tilde : icons.thumbUp);
@@ -59,7 +60,7 @@
     </div>
   </div>
 
-  <div class="coop" title={row.coop ? coopDetails(row.coop) : undefined}>{coopLabel(row.coop)}</div>
+  <div class="coop" title={coop && row.coop ? coopDetails(row.coop) : undefined}>{coop}</div>
 
   <div class="date">{info.releaseText}</div>
 

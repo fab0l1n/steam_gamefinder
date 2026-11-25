@@ -43,7 +43,7 @@
       <div class="muted">({info.review.percent}% of {info.review.count.toLocaleString('en-US')} reviews are positive)</div>
     </div>
   {/if}
-  {#if row.coop}
+  {#if row.coop && coopLabel(row.coop)}
     <div class="block">
       <div class="label">Co-op</div>
       <div>{coopLabel(row.coop)}</div>

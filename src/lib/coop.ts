@@ -61,10 +61,11 @@ export function coopPlayers(c: CoopInfo): number {
   return c.online > 0 ? c.online : Math.max(c.lan, c.local);
 }
 
+/** "X Player Co-op", or '' unless co-optimus gave us a player count. */
 export function coopLabel(c: CoopInfo | null | undefined): string {
-  if (!c) return '';
+  if (!c || c.source !== 'co-optimus') return '';
   const n = coopPlayers(c);
-  return n > 0 ? `${n} Player Co-op` : 'Co-op';
+  return n > 0 ? `${n} Player Co-op` : '';
 }
 
 export function coopDetails(c: CoopInfo): string {
