@@ -43,8 +43,8 @@ everyone wants, what's on sale, and who already owns it.
   it since when, who owns it and how long they played. Screenshots use Steam's 600×338 variants (the
   originals are up to 3840 px); the first one is loaded before the preview opens (waits 1.2 s at most).
   Loaded screenshots are remembered in memory for the page session only, nothing is stored.
-- **Sorting**: most wishlisted, most owned, most wishlisted+owned (members who have it either way, each
-  counted once; the sort every visit starts with), discount, price, reviews, release date, name. Each starts with the biggest / highest /
+- **Sorting**: most wishlisted+owned (members who have it either way, each counted once; the sort every
+  visit starts with), most wishlisted, most owned, discount, price, reviews, release date, name. Each starts with the biggest / highest /
   best / newest first (name: A–Z); the arrow next to *Sort by* reverses it (↓ default, ↑ reversed; the
   tooltip says which way it runs), and picking another option starts it at its default again. Games without
   a price or reviews stay at the bottom either way; undated upcoming games count as the newest.
@@ -54,7 +54,7 @@ everyone wants, what's on sale, and who already owns it.
   "Coming soon" games count as future releases, so they stay in with only *From* set and drop out once
   *To* is set; To = *Any* keeps every dated game), user tags (tick to require, `−` to exclude; counts update
   with the other filters), and last the content options: include DLC & hardware, hide games you own, hide
-  games on your wishlist. *Clear all* (top of the sidebar) resets all of them.
+  games on your wishlist. *Clear all* (below the last section) resets all of them.
   The view is wider than Steam's group column (up to 1240 px) to fit the sidebar; below 1100 px the
   filters move above the list.
 

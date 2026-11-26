@@ -120,12 +120,6 @@
 </script>
 
 <aside class="panel">
-  <!-- Always rendered, so "Clear all" appearing doesn't move anything. -->
-  <div class="panelhead">
-    <span>Filters</span>
-    {#if anyActive}<button class="clear" onclick={clearAll}>Clear all</button>{/if}
-  </div>
-
   <FilterSection title="Narrow by reviews & discount" collapsed={isCollapsed('reviews')} active={active.reviews} ontoggle={() => toggle('reviews')}>
     <div class="body">
       <div class="dual" style:--lo="{filters.reviewMin}%" style:--hi="{filters.reviewMax}%">
@@ -225,6 +219,11 @@
       <label><input type="checkbox" bind:checked={hideWishlisted} /> Hide games on my wishlist</label>
     </div>
   </FilterSection>
+
+  <!-- Below the last section, so it appearing doesn't move anything. -->
+  {#if anyActive}
+    <div class="clearrow"><button class="clear" onclick={clearAll}>Clear all</button></div>
+  {/if}
 </aside>
 
 <style>
@@ -235,22 +234,11 @@
     color: #c6d4df;
     font-size: 13px;
   }
-  .panelhead {
+  .clearrow {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 18px;
-    margin-bottom: -4px;
+    justify-content: flex-end;
+    margin-top: -4px;
     padding: 0 2px;
-    color: #8f98a0;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .panelhead .clear {
-    text-transform: none;
-    letter-spacing: 0;
-    font-size: 13px;
   }
   .body {
     padding: 12px 12px 14px;

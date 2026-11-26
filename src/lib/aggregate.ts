@@ -55,9 +55,9 @@ export type SortKey = 'wishlisted' | 'owned' | 'interest' | 'discount' | 'price'
 
 /** The "Sort by" options, in dropdown order. */
 export const SORT_LABELS: Record<SortKey, string> = {
+  interest: 'Most wishlisted+owned',
   wishlisted: 'Most wishlisted',
   owned: 'Most owned',
-  interest: 'Most wishlisted+owned',
   discount: 'Discount',
   price: 'Price',
   rating: 'Reviews',
