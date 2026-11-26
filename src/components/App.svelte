@@ -192,7 +192,7 @@
     </label>
     <Switch
       bind:checked={settings.matchAll}
-      prefix="Interested:"
+      prefix="Match:"
       left="Any"
       right="All"
       ariaLabel="Only games all selected members have"

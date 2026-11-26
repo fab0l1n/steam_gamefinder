@@ -9,6 +9,8 @@ everyone wants, what's on sale, and who already owns it.
 ## What v0.1 does
 
 - **Wishlists tab** on `steamcommunity.com/groups/<name>` (deep link: `…/groups/<name>#wishlists`).
+  Switching between it and Steam's tabs happens in the page, so the list stays loaded; Back and Forward
+  work as usual.
 - **One merged list**: cover, name, platforms, release date, review rating, discount, original and current
   price (in your store region and Steam language).
 - **Your highlights**: green background = in your library, blue = on your wishlist, with a small indicator
@@ -27,7 +29,7 @@ everyone wants, what's on sale, and who already owns it.
 - **Member status strip**: every member with what could be loaded (wishlist and library counts, hidden,
   needs sign-in, cached, failed) and why.
 - **Member selection**: click a member to see only their games; Ctrl+click (⌘ on Mac) adds or removes
-  members. The *Interested: Any / All* switch (next to *Sort by*) decides whether a game must be on the
+  members. The *Match: Any / All* switch (next to *Sort by*) decides whether a game must be on the
   wishlist or in the library of *any* selected member (left, default) or of *all* of them (right). With
   *All* and everyone selected you get the games every member has.
 - **Presets** above the members: *All*, your saved presets, and *+* to save the current selection under
@@ -77,7 +79,7 @@ Load a build by hand:
 Checks:
 
 ```sh
-npm test               # unit tests (parsers, aggregation, loader flow, background handlers)
+npm test               # unit tests (parsers, aggregation, loader flow, background handlers, tab switching)
 npm run check          # svelte-check / TypeScript
 npm run harness        # builds harness-dist/: the UI with mock data, for visual checks without Steam
 ```
@@ -95,6 +97,10 @@ group page (content script)                 background worker
                                              └─ www.co-optimus.com (fallback for newer games, 1 request/s)
 ```
 
+- Steam's group page runs its own tabs (it cancels clicks on in-page tabs and ignores the one it thinks is
+  open, and drops unknown hashes like `#wishlists` on load). So our tab is an overlay: a class on `<html>`
+  hides Steam's content while `#wishlists` is in the URL, and a tiny `document_start` script remembers
+  the hash before Steam removes it.
 - steamcommunity.com only allows the page to talk to Steam hosts (CSP), and store cookies are third-party
   there, so cookie-bound and cross-site calls run in the background worker.
 - Your Steam web token is fetched and used only inside the background worker and only sent to Steam.
@@ -117,6 +123,8 @@ A member's wishlist and library follow their Steam **Game details** privacy sett
 ```
 src/entrypoints/background.ts        message handler (validates requests from our content script)
 src/entrypoints/group.content/       tab injection + mounting the UI
+src/entrypoints/group-start.content.ts  records the page's hash before Steam removes it
+src/lib/tab-switch.ts                switching between our tab and Steam's
 src/components/                      Svelte UI (App, MemberStrip, GameRow, AvatarStack, FilterPanel, HoverPreview, Dialog, DebugLog)
 src/lib/steam/                       parsers for Steam responses (pure, unit-tested)
 src/lib/loader.ts                    load flow and per-member status

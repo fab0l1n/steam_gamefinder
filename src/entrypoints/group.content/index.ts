@@ -5,6 +5,7 @@ import { loadGroup, loadTags, type BgCall } from '@/lib/loader';
 import type { BgEnvelope } from '@/lib/messages';
 import { DEFAULT_SETTINGS, type DataSource, type UiSettings } from '@/lib/source';
 import { groupBaseFromUrl, readPageContext } from '@/lib/steam/community';
+import { createTabSwitch, initialHash, STEAM_HIDE_CSS } from '@/lib/tab-switch';
 
 const TAB_HASH = '#wishlists';
 const SETTINGS_KEY = 'sgf:settings';
@@ -42,7 +43,9 @@ export default defineContentScript({
     // 2. Our content area, next to Steam's own tab containers. Only on the group's main page.
     const overview = document.getElementById('group_tab_content_overview');
     if (!overview) return;
-    const dynamic = document.getElementById('group_page_dynamic_content');
+    const style = document.createElement('style');
+    style.textContent = STEAM_HIDE_CSS;
+    document.head.append(style);
     const root = document.createElement('div');
     root.id = 'sgf_wishlists';
     root.className = 'grouppage_content_area';
@@ -66,26 +69,26 @@ export default defineContentScript({
       },
     });
 
-    let active = false;
-    const activate = () => {
-      if (active) return;
-      active = true;
-      tabs.querySelectorAll('.group_tab.active').forEach((t) => t.classList.remove('active'));
-      tabLink.classList.add('active');
-      if (select) select.value = tabLink.href;
-      overview.style.display = 'none';
-      if (dynamic) dynamic.style.display = 'none';
-      root.style.display = '';
-      if (!ui.mounted) ui.mount();
-    };
-
-    // Steam's own tabs restore themselves from the URL on load, so leaving our tab is a reload:
-    // simpler and sturdier than reverse-engineering Steam's in-page tab state.
-    ctx.addEventListener(window, 'hashchange', () => {
-      if (location.hash === TAB_HASH) activate();
-      else if (active) location.reload();
+    // 3. Switching tabs happens in the page; the loaded list stays mounted while Steam's tabs show.
+    const tabSwitch = createTabSwitch({
+      win: window,
+      groupBase,
+      hash: TAB_HASH,
+      tabs,
+      tabLink,
+      select,
+      root,
+      onShow: () => {
+        if (!ui.mounted) ui.mount();
+      },
+      listen: (target, type, fn, options) =>
+        ctx.addEventListener(target as Window, type as keyof WindowEventMap, fn, options),
     });
-    if (location.hash === TAB_HASH) activate();
+    ctx.onInvalidated(() => {
+      tabSwitch.dispose();
+      style.remove();
+    });
+    tabSwitch.start(initialHash(window));
   },
 });
 
