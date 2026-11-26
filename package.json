@@ -1,0 +1,31 @@
+{
+  "name": "steam-gamefinder",
+  "version": "0.1.17",
+  "description": "Adds a Wishlists tab to Steam community groups: every member's wishlist in one list, with prices, reviews and who owns what.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip -b firefox",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "harness": "vite build --config harness/vite.config.ts",
+    "postinstall": "wxt prepare"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.2",
+    "@types/jsdom": "^30.0.0",
+    "@wxt-dev/module-svelte": "^2.0.5",
+    "jsdom": "^31.0.1",
+    "svelte": "^5.59.2",
+    "svelte-check": "^4.7.8",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.2",
+    "wxt": "^0.21.5"
+  }
+}
