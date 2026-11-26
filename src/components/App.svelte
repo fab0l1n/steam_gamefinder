@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { applyView, isSortKey, SORT_LABELS, SORT_ORDER, type SortKey } from '../lib/aggregate';
+  import { applyView, SORT_LABELS, SORT_ORDER, type SortKey } from '../lib/aggregate';
   import { EMPTY_FILTERS, filtersActive, matchesFilters, priceFormatter, priceSteps, releaseYears, type Filters } from '../lib/filters';
   import { DEFAULT_SETTINGS, type DataSource, type UiSettings } from '../lib/source';
   import type { GameRow, LoadSnapshot, Member } from '../lib/types';
@@ -153,8 +153,8 @@
   onMount(() => {
     const tick = setInterval(() => (now = Date.now()), 30_000);
     source.getSettings().then((s) => {
-      settings = { ...DEFAULT_SETTINGS, ...s };
-      if (!isSortKey(settings.sort)) settings.sort = DEFAULT_SETTINGS.sort;
+      // Every visit starts sorted by "Most wishlisted+owned" (↓); the other settings are remembered.
+      settings = { ...DEFAULT_SETTINGS, ...s, sort: DEFAULT_SETTINGS.sort, sortReverse: false };
       settingsReady = true;
       run(false);
     });

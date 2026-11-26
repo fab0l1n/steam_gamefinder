@@ -57,7 +57,7 @@ export type SortKey = 'wishlisted' | 'owned' | 'interest' | 'discount' | 'price'
 export const SORT_LABELS: Record<SortKey, string> = {
   wishlisted: 'Most wishlisted',
   owned: 'Most owned',
-  interest: 'Most wishlisted/owned',
+  interest: 'Most wishlisted+owned',
   discount: 'Discount',
   price: 'Price',
   rating: 'Reviews',

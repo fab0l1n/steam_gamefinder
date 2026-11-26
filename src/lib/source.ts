@@ -21,7 +21,7 @@ export interface UiSettings {
 }
 
 export const DEFAULT_SETTINGS: UiSettings = {
-  sort: 'wishlisted',
+  sort: 'interest',
   includeExtras: false,
   hideOwned: false,
   hideWishlisted: false,

@@ -43,8 +43,8 @@ everyone wants, what's on sale, and who already owns it.
   it since when, who owns it and how long they played. Screenshots use Steam's 600×338 variants (the
   originals are up to 3840 px); the first one is loaded before the preview opens (waits 1.2 s at most).
   Loaded screenshots are remembered in memory for the page session only, nothing is stored.
-- **Sorting**: most wishlisted, most owned, most wishlisted/owned (members who have it either way, each
-  counted once), discount, price, reviews, release date, name. Each starts with the biggest / highest /
+- **Sorting**: most wishlisted, most owned, most wishlisted+owned (members who have it either way, each
+  counted once; the sort every visit starts with), discount, price, reviews, release date, name. Each starts with the biggest / highest /
   best / newest first (name: A–Z); the arrow next to *Sort by* reverses it (↓ default, ↑ reversed; the
   tooltip says which way it runs), and picking another option starts it at its default again. Games without
   a price or reviews stay at the bottom either way; undated upcoming games count as the newest.
