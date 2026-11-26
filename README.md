@@ -39,14 +39,20 @@ everyone wants, what's on sale, and who already owns it.
   Also holds the rarely needed *Load libraries* switch (off = no library pages are read: no owner stacks,
   member filter by wishlist only) and *Re-check co-op*.
 - Controls stay usable while co-op counts are still filling in; a reload asked for then starts right after.
-- **Hover preview**: screenshot, reviews, tags, description, who wishlisted it since when, who owns it
-  and how long they played.
-- **Sorting** (most wishlisted, discount, price, rating, release date, name).
-- **Filter sidebar** like Steam search with Augmented Steam: content (include DLC & hardware, hide games
-  you own), review score range, review count, discount
+- **Hover preview**: the first three screenshots in rotation, reviews, tags, description, who wishlisted
+  it since when, who owns it and how long they played. Screenshots use Steam's 600×338 variants (the
+  originals are up to 3840 px); the first one is loaded before the preview opens (waits 1.2 s at most).
+  Loaded screenshots are remembered in memory for the page session only, nothing is stored.
+- **Sorting** (most wishlisted, discount, price, rating, release date, name). The arrow next to *Sort by*
+  reverses the order (↓ normal, ↑ reversed; the tooltip says which way it runs). Release date runs oldest →
+  newest with ↓ and newest first with ↑; undated upcoming games count as the newest.
+- **Filter sidebar** like Steam search with Augmented Steam; every section collapses (remembered; a dot
+  marks a collapsed section that still filters): review score range, review count, discount
   percent, price range (two knobs), release date (From/To: a year or *Today*; undated "To be announced" /
   "Coming soon" games count as future releases, so they stay in with only *From* set and drop out once
-  *To* is set; To = *Any* keeps every dated game), and user tags (tick to require, `−` to exclude; counts update with the other filters).
+  *To* is set; To = *Any* keeps every dated game), user tags (tick to require, `−` to exclude; counts update
+  with the other filters), and last the content options: include DLC & hardware, hide games you own, hide
+  games on your wishlist. *Clear all* (top of the sidebar) resets all of them.
   The view is wider than Steam's group column (up to 1240 px) to fit the sidebar; below 1100 px the
   filters move above the list.
 
@@ -130,6 +136,7 @@ src/lib/steam/                       parsers for Steam responses (pure, unit-tes
 src/lib/loader.ts                    load flow and per-member status
 src/lib/aggregate.ts                 merge, sort, toolbar options
 src/lib/filters.ts                   sidebar filters, tag counts, price steps
+src/lib/images.ts                    preview screenshots: small variants, session-only preloading
 src/lib/selection.ts                 member selection and presets
 src/lib/cache.ts                     TTL cache over storage.local
 tests/                               Vitest tests with synthetic fixtures

@@ -45,7 +45,7 @@ function g(appid: number, name: string, hue: number, o: Partial<GameInfo> = {}):
     review: { score: 9, label: 'Overwhelmingly Positive', percent: 96, count: 765203 },
     price: { isFree: false, final: '59,99€', original: null, discountPct: 0, finalCents: 5999 },
     platforms: { windows: true, mac: false, linux: false, deck: 3 },
-    tagids: [1, 2, 3, 4], screenshots: [art(name, hue + 20, 640, 360)],
+    tagids: [1, 2, 3, 4], screenshots: [1, 2, 3, 4].map((n) => art(`${name} · ${n}`, hue + 25 * n, 640, 360)),
     shortDescription: 'A story-rich, party-based RPG where your choices shape a tale of fellowship and betrayal.',
     coopFlag: false,
     ...o,

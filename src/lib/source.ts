@@ -7,6 +7,12 @@ export interface UiSettings {
   sort: SortKey;
   includeExtras: boolean;
   hideOwned: boolean;
+  /** Hide games on your own wishlist. */
+  hideWishlisted: boolean;
+  /** Reverse the sort order. */
+  sortReverse: boolean;
+  /** Ids of collapsed filter sections. */
+  filtersCollapsed: string[];
   loadLibraries: boolean;
   /** Debug log panel expanded. */
   debugOpen: boolean;
@@ -18,6 +24,9 @@ export const DEFAULT_SETTINGS: UiSettings = {
   sort: 'wishlisted',
   includeExtras: false,
   hideOwned: false,
+  hideWishlisted: false,
+  sortReverse: false,
+  filtersCollapsed: [],
   loadLibraries: true,
   debugOpen: false,
   matchAll: false,

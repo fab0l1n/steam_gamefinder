@@ -62,11 +62,25 @@ export const SORT_LABELS: Record<SortKey, string> = {
   name: 'Name',
 };
 
+/** What the order looks like: [normal (arrow down), reversed (arrow up)]. */
+export const SORT_ORDER: Record<SortKey, [string, string]> = {
+  wishlisted: ['most wishlisted first', 'fewest wishlists first'],
+  discount: ['biggest discount first', 'smallest discount first'],
+  price: ['lowest price first', 'highest price first'],
+  rating: ['best rated first', 'worst rated first'],
+  release: ['oldest first', 'newest first'],
+  name: ['A–Z', 'Z–A'],
+};
+
 export interface ViewOptions {
   sort: SortKey;
   /** Show DLC, hardware, soundtracks, demos etc. */
   includeExtras: boolean;
   hideOwned: boolean;
+  /** Hide games on the viewer's own wishlist. */
+  hideWishlisted?: boolean;
+  /** Reverse the sort order (the arrow next to "Sort by"). */
+  reverse?: boolean;
   /** Only games these members wishlisted or own; null = no member filter. */
   members: SteamId[] | null;
   /** false = any of `members` (default), true = every one of them. */
@@ -95,7 +109,8 @@ const comparators: Record<SortKey, (a: GameRow, b: GameRow) => number> = {
   discount: (a, b) => discount(b) - discount(a) || b.wishlistedBy.length - a.wishlistedBy.length || byName(a, b),
   price: (a, b) => price(a) - price(b) || byName(a, b),
   rating: (a, b) => rating(b) - rating(a) || byName(a, b),
-  release: (a, b) => release(b) - release(a) || byName(a, b),
+  // Chronological; undated "coming soon" games count as the newest.
+  release: (a, b) => release(a) - release(b) || byName(a, b),
   name: byName,
 };
 
@@ -104,10 +119,12 @@ export function applyView(rows: GameRow[], opts: ViewOptions): GameRow[] {
     (r) =>
       (opts.includeExtras || !isExtra(r.info)) &&
       (!opts.hideOwned || !r.viewerOwns) &&
+      (!opts.hideWishlisted || !r.viewerWishlisted) &&
       (!opts.members ||
         (opts.matchAll ? opts.members.every((id) => memberHas(r, id)) : opts.members.some((id) => memberHas(r, id)))),
   );
   const cmp = comparators[opts.sort];
-  // Apps that vanished from the store always go last.
-  return filtered.sort((a, b) => Number(!a.info.available) - Number(!b.info.available) || cmp(a, b));
+  const dir = opts.reverse ? -1 : 1;
+  // Apps that vanished from the store always go last, in either direction.
+  return filtered.sort((a, b) => Number(!a.info.available) - Number(!b.info.available) || dir * cmp(a, b));
 }

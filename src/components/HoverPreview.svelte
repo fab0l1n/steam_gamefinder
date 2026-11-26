@@ -2,6 +2,7 @@
   import type { GameRow, Member } from '../lib/types';
   import { formatReleaseDate } from '../lib/steam/store';
   import { coopDetails, coopLabel } from '../lib/coop';
+  import { loadedImage, preloadImage, previewImages } from '../lib/images';
 
   let {
     row,
@@ -24,7 +25,38 @@
     const top = vh - rect.bottom >= EST_HEIGHT + 6 ? rect.bottom + 6 : Math.max(8, rect.top - EST_HEIGHT - 6);
     return { left, top };
   });
-  const image = $derived(info.screenshots[0] ?? info.header);
+  /** Seconds per screenshot, like the screenshot rotation in Steam's own search preview. */
+  const ROTATE_MS = 2200;
+  const images = $derived(previewImages(info));
+  /** Per image: the URL once loaded (the first one usually is before the preview opens). */
+  let ready = $state<(string | null | undefined)[]>([]);
+  let current = $state(0);
+
+  $effect(() => {
+    const list = images;
+    let alive = true;
+    ready = list.map(loadedImage);
+    current = 0;
+    list.forEach((img, i) =>
+      preloadImage(img).then((url) => {
+        if (alive) ready[i] = url;
+      }),
+    );
+    // Next screenshot that has loaded; one still loading is skipped for now.
+    const timer = setInterval(() => {
+      for (let k = 1; k < list.length; k++) {
+        const j = (current + k) % list.length;
+        if (ready[j]) {
+          current = j;
+          break;
+        }
+      }
+    }, ROTATE_MS);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  });
   const tagNames = $derived(info.tagids.map((t) => tags[t]).filter(Boolean).slice(0, 6));
   const name = (id: string) => members.get(id)?.name ?? id;
   const hours = (min: number) => (min >= 60 ? `${Math.round(min / 60)} h` : min > 0 ? `${min} min` : '');
@@ -35,7 +67,16 @@
   <div class="sub">
     {info.comingSoon ? (info.releaseDate ? `Planned: ${info.releaseText}` : info.releaseText) : `Released ${info.releaseText}`}
   </div>
-  {#if image}<img class="shot" src={image} alt="" />{/if}
+  {#if images.length}
+    <div class="shots">
+      {#each images as img, i (img.src)}
+        {#if ready[i]}<img src={ready[i]} class:on={i === current} alt="" />{/if}
+      {/each}
+      {#if images.length > 1}
+        <div class="dots">{#each images as img, i (img.src)}<span class:on={i === current}></span>{/each}</div>
+      {/if}
+    </div>
+  {/if}
   {#if info.review}
     <div class="block">
       <div class="label">Overall user reviews</div>
@@ -72,6 +113,7 @@
 
 <style>
   .hover {
+    box-sizing: border-box; /* WIDTH includes the padding, so the placement maths holds */
     position: fixed;
     z-index: 10000;
     pointer-events: none;
@@ -92,13 +134,42 @@
     color: #6b7c8e;
     margin-bottom: 8px;
   }
-  .shot {
+  .shots {
+    position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
-    object-fit: cover;
-    display: block;
     margin-bottom: 8px;
     background: #9fb1c1;
+    overflow: hidden;
+  }
+  .shots img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+  }
+  .shots img.on {
+    opacity: 1;
+  }
+  .dots {
+    position: absolute;
+    right: 6px;
+    bottom: 5px;
+    display: flex;
+    gap: 4px;
+  }
+  .dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.45);
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+  }
+  .dots span.on {
+    background: #fff;
   }
   .block {
     margin-top: 8px;

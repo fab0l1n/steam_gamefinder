@@ -120,16 +120,29 @@ function setup(url = BASE, recordedHash: string | null = null) {
   });
   switches.push(sw);
   const tick = () => new Promise((r) => win.setTimeout(r, 5));
+  /** Waits for jsdom's asynchronous navigation events (hashchange, popstate), however busy the machine. */
+  const until = async (cond: () => boolean, ms = 3000) => {
+    const end = Date.now() + ms;
+    while (!cond()) {
+      if (Date.now() > end) throw new Error('timed out waiting for the page');
+      await new Promise((r) => win.setTimeout(r, 2));
+    }
+  };
   const click = async (id: string, init: MouseEventInit = {}) => {
     const el = doc.getElementById(id)!;
     el.dispatchEvent(new win.MouseEvent('click', { bubbles: true, cancelable: true, button: 0, ...init }));
     await tick();
   };
+  /** Click our tab and wait for the hash navigation to open it. */
+  const open = async () => {
+    await click('group_tab_wishlists');
+    await until(() => sw.isActive());
+  };
   const activeTabs = () => [...doc.querySelectorAll('.group_tab.active')].map((t) => t.id);
   const ourViewShown = () =>
     doc.documentElement.classList.contains(ACTIVE_CLASS) &&
     doc.getElementById('sgf_wishlists')!.style.display === '';
-  return { win, doc, steam, sw, tick, click, activeTabs, ourViewShown, shows: () => shows };
+  return { win, doc, steam, sw, tick, until, click, open, activeTabs, ourViewShown, shows: () => shows };
 }
 
 afterEach(() => {
@@ -142,7 +155,7 @@ describe('tab switching', () => {
     const t = setup();
     t.sw.start(initialHash(t.win));
     expect(t.sw.isActive()).toBe(false);
-    await t.click('group_tab_wishlists');
+    await t.open();
     expect(t.win.location.hash).toBe(HASH);
     expect(t.sw.isActive()).toBe(true);
     expect(t.ourViewShown()).toBe(true);
@@ -153,7 +166,7 @@ describe('tab switching', () => {
 
   it('Overview brings back the overview, although Steam thinks it is still showing it', async () => {
     const t = setup();
-    await t.click('group_tab_wishlists');
+    await t.open();
     await t.click('group_tab_overview');
     expect(t.steam.calls).toContain(''); // Steam got the click and did nothing with it
     expect(t.sw.isActive()).toBe(false);
@@ -166,7 +179,7 @@ describe('tab switching', () => {
     expect(t.doc.querySelector('select')!.value).toBe('#');
     // …and Back returns to the list without reloading it.
     t.win.history.back();
-    await t.tick();
+    await t.until(() => t.sw.isActive());
     expect(t.sw.isActive()).toBe(true);
     expect(t.ourViewShown()).toBe(true);
     expect(t.shows()).toBe(2);
@@ -174,7 +187,7 @@ describe('tab switching', () => {
 
   it('other in-page tabs are left to Steam', async () => {
     const t = setup();
-    await t.click('group_tab_wishlists');
+    await t.open();
     await t.click('group_tab_members');
     expect(t.sw.isActive()).toBe(false);
     expect(t.win.location.pathname).toBe('/groups/Test/members');
@@ -182,7 +195,7 @@ describe('tab switching', () => {
     expect(t.activeTabs()).toEqual(['group_tab_members']);
     // Back: Steam loads the overview for that entry, our tab covers it again.
     t.win.history.back();
-    await t.tick();
+    await t.until(() => t.sw.isActive());
     expect(t.win.location.hash).toBe(HASH);
     expect(t.steam.activeTab).toBe('overview');
     expect(t.sw.isActive()).toBe(true);
@@ -213,7 +226,7 @@ describe('tab switching', () => {
 
   it('ignores Ctrl+click and links Steam does not handle in the page', async () => {
     const t = setup();
-    await t.click('group_tab_wishlists');
+    await t.open();
     await t.click('group_tab_overview', { ctrlKey: true });
     expect(t.sw.isActive()).toBe(true);
     await t.click('lang');
@@ -226,18 +239,16 @@ describe('tab switching', () => {
     const select = t.doc.querySelector('select')!;
     select.value = `${BASE}${HASH}`;
     select.dispatchEvent(new t.win.Event('change', { bubbles: true }));
-    await t.tick();
-    expect(t.sw.isActive()).toBe(true);
+    await t.until(() => t.sw.isActive());
     select.value = '#';
     select.dispatchEvent(new t.win.Event('change', { bubbles: true }));
-    await t.tick();
-    expect(t.sw.isActive()).toBe(false);
+    await t.until(() => !t.sw.isActive());
     expect(t.activeTabs()).toEqual(['group_tab_overview']);
   });
 
   it('dispose hands the page back to Steam', async () => {
     const t = setup();
-    await t.click('group_tab_wishlists');
+    await t.open();
     t.sw.dispose();
     expect(t.ourViewShown()).toBe(false);
     expect(t.activeTabs()).toEqual(['group_tab_overview']);

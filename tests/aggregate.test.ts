@@ -22,7 +22,7 @@ const games = new Map<number, GameInfo>([
   [1, game(1, { name: 'Alpha', best_purchase_option: { formatted_final_price: '10€', final_price_in_cents: 1000, discount_pct: 0 } })],
   [2, game(2, { name: 'Bravo', best_purchase_option: { formatted_final_price: '5€', formatted_original_price: '20€', final_price_in_cents: 500, discount_pct: 75 } })],
   [3, game(3, { name: 'Charlie', type: 10 })], // hardware
-  [4, game(4, { name: 'Delta', reviews: { summary_filtered: { review_score: 5, review_count: 10, percent_positive: 60, review_score_label: 'Mixed' } } })],
+  [4, game(4, { name: 'Delta', release: { steam_release_date: 1500000000 }, reviews: { summary_filtered: { review_score: 5, review_count: 10, percent_positive: 60, review_score_label: 'Mixed' } } })],
 ]);
 
 const rows = buildRows({
@@ -70,6 +70,15 @@ describe('applyView', () => {
     expect(view({ sort: 'price' }).slice(0, 2)).toEqual([2, 1]);
     expect(view({ sort: 'rating' }).indexOf(4)).toBeGreaterThan(view({ sort: 'rating' }).indexOf(1));
     expect(view({ sort: 'name' })).toEqual([1, 2, 4, 99]);
+  });
+  it('sorts release dates chronologically and reverses any order; unavailable apps stay last', () => {
+    expect(view({ sort: 'release' })).toEqual([4, 1, 2, 99]); // Delta is older; 1 and 2 tie → by name
+    expect(view({ sort: 'release', reverse: true })).toEqual([2, 1, 4, 99]);
+    expect(view({ sort: 'name', reverse: true })).toEqual([4, 2, 1, 99]);
+    expect(view({ sort: 'wishlisted', reverse: true }).at(0)).not.toBe(2);
+  });
+  it('hides games on the viewer\'s wishlist', () => {
+    expect(view({ hideWishlisted: true })).toEqual([4, 99]);
   });
   it('filters by member and hides owned games', () => {
     expect(view({ members: [VIEWER] })).toEqual([2, 1]);

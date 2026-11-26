@@ -14,6 +14,9 @@ export const icons = {
     '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M1 2h14v2.5H1zm0 4.75h14v2.5H1zM1 11.5h14V14H1z"/></svg>',
   eyeOff:
     '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8zM2 2l12 12"/></svg>',
+  /** Sort direction; the toolbar rotates it for "up". */
+  arrowDown:
+    '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M8 2.5v10M3.5 8.5 8 13l4.5-4.5"/></svg>',
   check:
     '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" d="m2.5 8.5 3.5 3.5 7.5-8"/></svg>',
   warn:

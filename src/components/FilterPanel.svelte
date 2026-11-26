@@ -2,11 +2,14 @@
   /** Right-hand filter sidebar, modelled on Steam search with Augmented Steam's extra filters. */
   import { boundEnd, boundStart, EMPTY_FILTERS, filtersActive, priceLabel, releaseLabel, tagCounts, type Filters, type ReleaseBound } from '../lib/filters';
   import type { GameRow } from '../lib/types';
+  import FilterSection from './FilterSection.svelte';
 
   let {
     filters = $bindable(),
     includeExtras = $bindable(false),
     hideOwned = $bindable(false),
+    hideWishlisted = $bindable(false),
+    collapsed = $bindable([]),
     tagRows,
     tagNames,
     steps,
@@ -18,6 +21,10 @@
     includeExtras: boolean;
     /** Hide games in your library (saved setting). */
     hideOwned: boolean;
+    /** Hide games on your own wishlist (saved setting). */
+    hideWishlisted: boolean;
+    /** Ids of collapsed sections (saved setting). */
+    collapsed: string[];
     /** Rows after every filter except the tag filter (for tag counts). */
     tagRows: GameRow[];
     tagNames: Record<number, string>;
@@ -28,12 +35,25 @@
   } = $props();
 
   const TOP_TAGS = 10;
-  const anyActive = $derived(filtersActive(filters) || includeExtras || hideOwned);
+  /** Which sections have something set; a collapsed one shows a dot then. */
+  const active = $derived({
+    reviews:
+      filters.reviewMin > 0 || filters.reviewMax < 100 || filters.countMin != null || filters.countMax != null ||
+      filters.discountMin != null || filters.discountMax != null,
+    price: filters.priceMinCents != null || filters.priceMaxCents != null,
+    release: filters.releaseFrom != null || filters.releaseTo != null,
+    tags: filters.tagsInclude.length > 0 || filters.tagsExclude.length > 0,
+    content: includeExtras || hideOwned || hideWishlisted,
+  });
+  const anyActive = $derived(filtersActive(filters) || active.content);
   function clearAll() {
     filters = { ...EMPTY_FILTERS };
     includeExtras = false;
     hideOwned = false;
+    hideWishlisted = false;
   }
+  const isCollapsed = (id: string) => collapsed.includes(id);
+  const toggle = (id: string) => (collapsed = isCollapsed(id) ? collapsed.filter((x) => x !== id) : [...collapsed, id]);
   let tagQuery = $state('');
 
   const reviewLabel = $derived(
@@ -100,21 +120,13 @@
 </script>
 
 <aside class="panel">
-  <section>
-    <h3>
-      Narrow by content
-      {#if anyActive}
-        <button class="clear" onclick={clearAll}>Clear all</button>
-      {/if}
-    </h3>
-    <div class="body checks">
-      <label><input type="checkbox" bind:checked={includeExtras} /> Include DLC &amp; hardware</label>
-      <label><input type="checkbox" bind:checked={hideOwned} /> Hide games I own</label>
-    </div>
-  </section>
+  <!-- Always rendered, so "Clear all" appearing doesn't move anything. -->
+  <div class="panelhead">
+    <span>Filters</span>
+    {#if anyActive}<button class="clear" onclick={clearAll}>Clear all</button>{/if}
+  </div>
 
-  <section>
-    <h3>Narrow by reviews &amp; discount</h3>
+  <FilterSection title="Narrow by reviews & discount" collapsed={isCollapsed('reviews')} active={active.reviews} ontoggle={() => toggle('reviews')}>
     <div class="body">
       <div class="dual" style:--lo="{filters.reviewMin}%" style:--hi="{filters.reviewMax}%">
         <div class="track"></div>
@@ -143,10 +155,9 @@
           oninput={(e) => (filters.discountMax = num(e.currentTarget.value))} />
       </div>
     </div>
-  </section>
+  </FilterSection>
 
-  <section>
-    <h3>Narrow by Price</h3>
+  <FilterSection title="Narrow by Price" collapsed={isCollapsed('price')} active={active.price} ontoggle={() => toggle('price')}>
     <div class="body">
       <div class="dual" style:--lo="{pctOf(priceMinIndex)}%" style:--hi="{pctOf(priceMaxIndex)}%">
         <div class="track"></div>
@@ -158,10 +169,9 @@
       </div>
       <div class="center">{priceLabel(filters.priceMinCents, filters.priceMaxCents, fmt)}</div>
     </div>
-  </section>
+  </FilterSection>
 
-  <section>
-    <h3>Narrow by release date</h3>
+  <FilterSection title="Narrow by release date" collapsed={isCollapsed('release')} active={active.release} ontoggle={() => toggle('release')}>
     <div class="body">
       <div class="pair dates">
         <label>
@@ -186,10 +196,9 @@
       </div>
       <div class="center">{releaseLabel(filters.releaseFrom, filters.releaseTo)}</div>
     </div>
-  </section>
+  </FilterSection>
 
-  <section>
-    <h3>Narrow by tag</h3>
+  <FilterSection title="Narrow by tag" collapsed={isCollapsed('tags')} active={active.tags} ontoggle={() => toggle('tags')}>
     <div class="body tags">
       {#each tagList as [t, n] (t)}
         {@const inc = filters.tagsInclude.includes(t)}
@@ -207,7 +216,15 @@
       {/each}
       <input class="search" type="search" placeholder="search for more tags" bind:value={tagQuery} />
     </div>
-  </section>
+  </FilterSection>
+
+  <FilterSection title="Narrow by content" collapsed={isCollapsed('content')} active={active.content} ontoggle={() => toggle('content')}>
+    <div class="body checks">
+      <label><input type="checkbox" bind:checked={includeExtras} /> Include DLC &amp; hardware</label>
+      <label><input type="checkbox" bind:checked={hideOwned} /> Hide games I own</label>
+      <label><input type="checkbox" bind:checked={hideWishlisted} /> Hide games on my wishlist</label>
+    </div>
+  </FilterSection>
 </aside>
 
 <style>
@@ -218,19 +235,22 @@
     color: #c6d4df;
     font-size: 13px;
   }
-  section {
-    background: rgba(0, 0, 0, 0.2);
-  }
-  h3 {
+  .panelhead {
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-    margin: 0;
-    padding: 8px 10px;
+    align-items: center;
+    height: 18px;
+    margin-bottom: -4px;
+    padding: 0 2px;
+    color: #8f98a0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .panelhead .clear {
+    text-transform: none;
+    letter-spacing: 0;
     font-size: 13px;
-    font-weight: 400;
-    color: #c6d4df;
-    background: rgba(103, 193, 245, 0.12);
   }
   .body {
     padding: 12px 12px 14px;

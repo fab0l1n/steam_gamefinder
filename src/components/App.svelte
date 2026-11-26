@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { applyView, SORT_LABELS, type SortKey } from '../lib/aggregate';
+  import { applyView, SORT_LABELS, SORT_ORDER, type SortKey } from '../lib/aggregate';
   import { EMPTY_FILTERS, filtersActive, matchesFilters, priceFormatter, priceSteps, releaseYears, type Filters } from '../lib/filters';
   import { DEFAULT_SETTINGS, type DataSource, type UiSettings } from '../lib/source';
   import type { GameRow, LoadSnapshot, Member } from '../lib/types';
   import { icons } from './icons';
+  import { atMost, preloadImage, previewImages } from '../lib/images';
   import MemberStrip from './MemberStrip.svelte';
   import GameRowView from './GameRow.svelte';
   import HoverPreview from './HoverPreview.svelte';
@@ -50,7 +51,10 @@
   /** Sorted rows after the toolbar options and member filter. */
   // "Any" with everyone selected needs no filter; "All" with everyone selected = games every member has.
   const memberFilterIds = $derived(settings.matchAll ? (allSelected ? allIds : effective) : allSelected ? null : effective);
-  const baseRows = $derived(snap ? applyView(snap.rows, { ...settings, members: memberFilterIds }) : []);
+  const baseRows = $derived(
+    snap ? applyView(snap.rows, { ...settings, reverse: settings.sortReverse, members: memberFilterIds }) : [],
+  );
+  const order = $derived(SORT_ORDER[settings.sort]);
   /** Rows for the tag counts: every sidebar filter except tags. */
   const tagRows = $derived(baseRows.filter((r) => matchesFilters(r, filters, { ignoreTags: true })));
   const rows = $derived(tagRows.filter((r) => matchesFilters(r, filters)));
@@ -119,12 +123,25 @@
   }
 
   let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Bumped on every enter/leave, so a preview whose screenshot arrives late doesn't open. */
+  let hoverSeq = 0;
+  const HOVER_DELAY_MS = 250;
+  /** Longest wait for the first screenshot; after that the preview opens and it fades in. */
+  const HOVER_IMAGE_WAIT_MS = 1200;
   function onRowEnter(row: GameRow, el: HTMLElement) {
     clearTimeout(hoverTimer);
-    hoverTimer = setTimeout(() => (hover = { row, rect: el.getBoundingClientRect() }), 250);
+    const seq = ++hoverSeq;
+    // Start loading the first screenshot now, so it is there when the preview opens.
+    const first = previewImages(row.info)[0];
+    const image = first ? atMost(preloadImage(first), HOVER_IMAGE_WAIT_MS) : Promise.resolve();
+    const delay = new Promise<void>((r) => (hoverTimer = setTimeout(r, HOVER_DELAY_MS)));
+    Promise.all([delay, image]).then(() => {
+      if (seq === hoverSeq) hover = { row, rect: el.getBoundingClientRect() };
+    });
   }
   function onRowLeave() {
     clearTimeout(hoverTimer);
+    hoverSeq++;
     hover = null;
   }
 
@@ -184,12 +201,24 @@
   <div class="layout">
   <div class="results">
   <div class="toolbar">
-    <label>
-      Sort by
-      <select bind:value={settings.sort}>
-        {#each sortKeys as k (k)}<option value={k}>{SORT_LABELS[k]}</option>{/each}
-      </select>
-    </label>
+    <span class="sort">
+      <label>
+        Sort by
+        <select bind:value={settings.sort}>
+          {#each sortKeys as k (k)}<option value={k}>{SORT_LABELS[k]}</option>{/each}
+        </select>
+      </label>
+      <button
+        class="dir"
+        class:up={settings.sortReverse}
+        aria-label="Reverse the order"
+        aria-pressed={settings.sortReverse}
+        title={`Showing ${order[settings.sortReverse ? 1 : 0]}. Click for ${order[settings.sortReverse ? 0 : 1]}.`}
+        onclick={() => (settings.sortReverse = !settings.sortReverse)}
+      >
+        {@html icons.arrowDown}
+      </button>
+    </span>
     <Switch
       bind:checked={settings.matchAll}
       prefix="Match:"
@@ -253,6 +282,8 @@
     bind:filters
     bind:includeExtras={settings.includeExtras}
     bind:hideOwned={settings.hideOwned}
+    bind:hideWishlisted={settings.hideWishlisted}
+    bind:collapsed={settings.filtersCollapsed}
     {tagRows}
     tagNames={tags}
     {steps}
@@ -385,6 +416,34 @@
     padding: 8px 10px;
     margin: 0 0 6px;
     color: #8f98a0;
+  }
+  .sort {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .dir {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: 2px;
+    background: rgba(103, 193, 245, 0.15);
+    color: #67c1f5;
+    cursor: pointer;
+  }
+  .dir:hover {
+    background: rgba(103, 193, 245, 0.3);
+    color: #fff;
+  }
+  .dir :global(svg) {
+    transition: transform 0.15s ease;
+  }
+  .dir.up :global(svg) {
+    transform: rotate(180deg);
   }
   .toolbar label {
     display: inline-flex;
