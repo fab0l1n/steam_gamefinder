@@ -5,6 +5,8 @@
 
   let {
     filters = $bindable(),
+    includeExtras = $bindable(false),
+    hideOwned = $bindable(false),
     tagRows,
     tagNames,
     steps,
@@ -12,6 +14,10 @@
     years,
   }: {
     filters: Filters;
+    /** Show DLC, hardware, soundtracks… (saved setting). */
+    includeExtras: boolean;
+    /** Hide games in your library (saved setting). */
+    hideOwned: boolean;
     /** Rows after every filter except the tag filter (for tag counts). */
     tagRows: GameRow[];
     tagNames: Record<number, string>;
@@ -22,6 +28,12 @@
   } = $props();
 
   const TOP_TAGS = 10;
+  const anyActive = $derived(filtersActive(filters) || includeExtras || hideOwned);
+  function clearAll() {
+    filters = { ...EMPTY_FILTERS };
+    includeExtras = false;
+    hideOwned = false;
+  }
   let tagQuery = $state('');
 
   const reviewLabel = $derived(
@@ -90,11 +102,19 @@
 <aside class="panel">
   <section>
     <h3>
-      Narrow by reviews &amp; discount
-      {#if filtersActive(filters)}
-        <button class="clear" onclick={() => (filters = { ...EMPTY_FILTERS })}>Clear all</button>
+      Narrow by content
+      {#if anyActive}
+        <button class="clear" onclick={clearAll}>Clear all</button>
       {/if}
     </h3>
+    <div class="body checks">
+      <label><input type="checkbox" bind:checked={includeExtras} /> Include DLC &amp; hardware</label>
+      <label><input type="checkbox" bind:checked={hideOwned} /> Hide games I own</label>
+    </div>
+  </section>
+
+  <section>
+    <h3>Narrow by reviews &amp; discount</h3>
     <div class="body">
       <div class="dual" style:--lo="{filters.reviewMin}%" style:--hi="{filters.reviewMax}%">
         <div class="track"></div>
@@ -214,6 +234,21 @@
   }
   .body {
     padding: 12px 12px 14px;
+  }
+  .checks {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .checks label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .checks input {
+    accent-color: #67c1f5;
+    margin: 0;
   }
   .center {
     text-align: center;

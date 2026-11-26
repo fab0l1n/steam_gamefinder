@@ -5,8 +5,18 @@
     onclear,
     onrecheck,
     busy = false,
+    loadLibraries,
+    onlibraries,
     open = $bindable(false),
-  }: { lines: string[]; onclear: () => void; onrecheck: () => void; busy?: boolean; open?: boolean } = $props();
+  }: {
+    lines: string[];
+    onclear: () => void;
+    onrecheck: () => void;
+    busy?: boolean;
+    loadLibraries: boolean;
+    onlibraries: (v: boolean) => void;
+    open?: boolean;
+  } = $props();
 
   let box = $state<HTMLTextAreaElement>();
   let copied = $state(false);
@@ -36,6 +46,13 @@
     </button>
     {#if open}
       <span class="actions">
+        <label
+          class="lib"
+          title="Read each member's Steam games page (about 1 MB each, cached for a day; needs you signed in to Steam). Powers the owner stacks, 'Owned by' in the preview and the library part of the member filter."
+        >
+          <input type="checkbox" checked={loadLibraries} disabled={busy} onchange={(e) => onlibraries(e.currentTarget.checked)} />
+          Load libraries
+        </label>
         <button onclick={onrecheck} disabled={busy} title="Look up every co-op game on co-optimus again (normally cached for 30 days)">Re-check co-op</button>
         <button onclick={copy}>{copied ? 'Copied' : 'Copy'}</button>
         <button onclick={onclear}>Clear</button>
@@ -80,7 +97,21 @@
   }
   .actions {
     display: flex;
+    align-items: center;
     gap: 6px;
+  }
+  .lib {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-right: 8px;
+    color: #8f98a0;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .lib input {
+    accent-color: #67c1f5;
+    margin: 0;
   }
   textarea {
     display: block;

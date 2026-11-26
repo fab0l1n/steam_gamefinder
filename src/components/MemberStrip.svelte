@@ -8,8 +8,6 @@
     selected,
     allSelected,
     presets,
-    matchAll,
-    ontogglematch,
     onselect,
     onall,
     onpreset,
@@ -20,9 +18,6 @@
     selected: string[];
     allSelected: boolean;
     presets: Preset[];
-    /** Any/All switch for the member filter (left = any, right = all). */
-    matchAll: boolean;
-    ontogglematch: () => void;
     /** `additive` = Ctrl/⌘ held: add or remove instead of replacing the selection. */
     onselect: (steamid: string, additive: boolean) => void;
     onall: () => void;
@@ -88,20 +83,6 @@
     {/each}
     <button class="preset add" onclick={onadd} title="Save the current selection as a preset">+</button>
 
-    <button
-      class="match"
-      role="switch"
-      aria-checked={matchAll}
-      aria-label="Show games all selected members have"
-      title={matchAll
-        ? 'All: games every selected member has on their wishlist or in their library'
-        : 'Any: games at least one selected member has on their wishlist or in their library'}
-      onclick={ontogglematch}
-    >
-      <span class="mlabel" class:on={!matchAll}>Any</span>
-      <span class="track" class:right={matchAll}><span class="knob"></span></span>
-      <span class="mlabel" class:on={matchAll}>All</span>
-    </button>
   </div>
 
   <div class="strip">
@@ -194,52 +175,6 @@
     border-color: #67c1f5;
     background: rgba(103, 193, 245, 0.18);
     color: #fff;
-  }
-  .match {
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 6px;
-    background: none;
-    border: 0;
-    color: #8f98a0;
-    font: inherit;
-    cursor: pointer;
-  }
-  .mlabel.on {
-    color: #fff;
-  }
-  .track {
-    position: relative;
-    width: 38px;
-    height: 20px;
-    border-radius: 10px;
-    background: #2a3f5a;
-    border: 1px solid #3a5269;
-    transition: background 0.15s;
-  }
-  .track.right {
-    background: rgba(103, 193, 245, 0.35);
-    border-color: #67c1f5;
-  }
-  .knob {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #c6d4df;
-    transition: transform 0.15s;
-  }
-  .track.right .knob {
-    transform: translateX(18px);
-    background: #fff;
-  }
-  .match:focus-visible .track {
-    outline: 2px solid #67c1f5;
-    outline-offset: 2px;
   }
   .preset.add {
     min-width: 32px;

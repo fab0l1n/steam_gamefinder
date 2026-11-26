@@ -11,6 +11,7 @@
   import FilterPanel from './FilterPanel.svelte';
   import Dialog from './Dialog.svelte';
   import DebugLog from './DebugLog.svelte';
+  import Switch from './Switch.svelte';
   import { clickMember, isAllSelected, newPreset, presetSelection, type Preset } from '../lib/selection';
 
   let { source }: { source: DataSource } = $props();
@@ -74,8 +75,17 @@
     if (logLines.length > 3000) logLines.splice(0, logLines.length - 3000);
   }
 
+  /** A reload asked for while one is running; started as soon as it finishes. */
+  let pending: { force: boolean; recheckCoop: boolean } | null = null;
+  /** The list itself is still loading (co-op counts filling in afterwards don't count). */
+  const listBusy = $derived(busy && snap?.phase !== 'done' && snap?.phase !== 'error');
+
   async function run(force: boolean, recheckCoop = false) {
-    if (busy) return;
+    if (busy) {
+      pending = { force: force || !!pending?.force, recheckCoop: recheckCoop || !!pending?.recheckCoop };
+      log(`Reload queued (${force ? 'refresh' : recheckCoop ? 'co-op re-check' : 'settings changed'}); starts when the current load finishes`);
+      return;
+    }
     busy = true;
     hover = null;
     try {
@@ -87,6 +97,11 @@
         : { phase: 'error', message: String(e), error: String(e), groupName: '', members: [], rows: [], viewer: { steamid: null, loggedIn: false }, updatedAt: null };
     } finally {
       busy = false;
+      if (pending) {
+        const next = pending;
+        pending = null;
+        run(next.force, next.recheckCoop);
+      }
     }
   }
 
@@ -132,13 +147,21 @@
 </script>
 
 <div class="sgf" onscroll={onRowLeave}>
-  <DebugLog lines={logLines} onclear={() => (logLines = [])} onrecheck={() => run(false, true)} {busy} bind:open={settings.debugOpen} />
+  <DebugLog
+    lines={logLines}
+    onclear={() => (logLines = [])}
+    onrecheck={() => run(false, true)}
+    busy={listBusy}
+    loadLibraries={settings.loadLibraries}
+    onlibraries={setLoadLibraries}
+    bind:open={settings.debugOpen}
+  />
 
   <div class="head">
     <h2>Wishlists{#if snap?.groupName}<span class="group">&nbsp;· {snap.groupName}</span>{/if}</h2>
     <div class="updated">
       {#if snap?.updatedAt}Updated {ago(snap.updatedAt)}{/if}
-      <button class="btn" onclick={() => run(true)} disabled={busy} title="Reload everything from Steam, ignoring the cache. Co-op counts stay cached (30 days); re-check them from the debug log.">
+      <button class="btn" onclick={() => run(true)} disabled={listBusy} title="Reload everything from Steam, ignoring the cache. Co-op counts stay cached (30 days); re-check them from the debug log.">
         {@html icons.refresh} Refresh
       </button>
     </div>
@@ -150,8 +173,6 @@
       selected={effective}
       {allSelected}
       {presets}
-      matchAll={settings.matchAll}
-      ontogglematch={() => (settings.matchAll = !settings.matchAll)}
       onselect={(id, additive) => select(clickMember(effective, id, additive, allIds))}
       onall={() => select([])}
       onpreset={(p) => select(presetSelection(p, allIds))}
@@ -169,12 +190,14 @@
         {#each sortKeys as k (k)}<option value={k}>{SORT_LABELS[k]}</option>{/each}
       </select>
     </label>
-    <label><input type="checkbox" bind:checked={settings.includeExtras} /> Include DLC &amp; hardware</label>
-    <label><input type="checkbox" bind:checked={settings.hideOwned} /> Hide games I own</label>
-    <label title="Reads each member's games page (about 1 MB each, cached for a day). Needs you to be signed in to Steam.">
-      <input type="checkbox" checked={settings.loadLibraries} onchange={(e) => setLoadLibraries(e.currentTarget.checked)} disabled={busy} />
-      Load libraries
-    </label>
+    <Switch
+      bind:checked={settings.matchAll}
+      prefix="Interested:"
+      left="Any"
+      right="All"
+      ariaLabel="Only games all selected members have"
+      title={'Any: games at least one selected member has on their wishlist or in their library.\nAll: only games every selected member has.'}
+    />
   </div>
 
   <div class="summary" class:error={snap?.phase === 'error'}>
@@ -226,7 +249,16 @@
   {/if}
   </div>
 
-  <FilterPanel bind:filters {tagRows} tagNames={tags} {steps} {fmt} {years} />
+  <FilterPanel
+    bind:filters
+    bind:includeExtras={settings.includeExtras}
+    bind:hideOwned={settings.hideOwned}
+    {tagRows}
+    tagNames={tags}
+    {steps}
+    {fmt}
+    {years}
+  />
   </div>
 
   {#if hover}
@@ -347,7 +379,7 @@
   .toolbar {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 18px;
+    gap: 6px 28px;
     align-items: center;
     background: rgba(0, 0, 0, 0.2);
     padding: 8px 10px;
@@ -371,10 +403,6 @@
   option {
     background: #1b2838;
     color: #c6d4df;
-  }
-  input[type='checkbox'] {
-    accent-color: #67c1f5;
-    margin: 0;
   }
   .summary {
     color: #8f98a0;

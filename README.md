@@ -27,18 +27,21 @@ everyone wants, what's on sale, and who already owns it.
 - **Member status strip**: every member with what could be loaded (wishlist and library counts, hidden,
   needs sign-in, cached, failed) and why.
 - **Member selection**: click a member to see only their games; Ctrl+click (⌘ on Mac) adds or removes
-  members. The *Any / All* switch (right of the presets) decides whether a game must be on the wishlist
-  or in the library of *any* selected member (left, default) or of *all* of them (right). With *All* and
-  everyone selected you get the games every member has.
+  members. The *Interested: Any / All* switch (next to *Sort by*) decides whether a game must be on the
+  wishlist or in the library of *any* selected member (left, default) or of *all* of them (right). With
+  *All* and everyone selected you get the games every member has.
 - **Presets** above the members: *All*, your saved presets, and *+* to save the current selection under
   a name. Right-click a saved preset to remove it (asks first). Stored per group in your browser.
-- **Debug log** at the top (collapsed by default, remembers its state): what was loaded from where (cache or Steam), per-member results and every
-  co-op lookup. *Copy* puts it on the clipboard for bug reports.
+- **Debug log** at the top (collapsed by default, remembers its state): what was loaded from where (cache
+  or Steam), per-member results and every co-op lookup. *Copy* puts it on the clipboard for bug reports.
+  Also holds the rarely needed *Load libraries* switch (off = no library pages are read: no owner stacks,
+  member filter by wishlist only) and *Re-check co-op*.
+- Controls stay usable while co-op counts are still filling in; a reload asked for then starts right after.
 - **Hover preview**: screenshot, reviews, tags, description, who wishlisted it since when, who owns it
   and how long they played.
-- **Sorting** (most wishlisted, discount, price, rating, release date, name) and toggles for DLC/hardware,
-  hiding games you own, and loading libraries.
-- **Filter sidebar** like Steam search with Augmented Steam: review score range, review count, discount
+- **Sorting** (most wishlisted, discount, price, rating, release date, name).
+- **Filter sidebar** like Steam search with Augmented Steam: content (include DLC & hardware, hide games
+  you own), review score range, review count, discount
   percent, price range (two knobs), release date (From/To: a year or *Today*; undated "To be announced" /
   "Coming soon" games count as future releases, so they stay in with only *From* set and drop out once
   *To* is set; To = *Any* keeps every dated game), and user tags (tick to require, `−` to exclude; counts update with the other filters).
