@@ -65,17 +65,49 @@ describe('applyView', () => {
   it('includes hardware/DLC on request', () => {
     expect(view({ includeExtras: true })).toContain(3);
   });
-  it('sorts by discount, price, rating and name', () => {
+  it('sorts by owners and by members who wishlisted or own a game', () => {
+    expect(view({ sort: 'owned' })).toEqual([1, 2, 4, 99]); // only 1 is owned; then by wishlists
+    // 1 (one wishlist + one owner) ties 2 (two wishlists) at two members; more wishlists wins.
+    expect(view({ sort: 'interest' })).toEqual([2, 1, 4, 99]);
+  });
+  it('sorts by discount, price, rating and name, biggest first (name A–Z)', () => {
     expect(view({ sort: 'discount' })[0]).toBe(2);
-    expect(view({ sort: 'price' }).slice(0, 2)).toEqual([2, 1]);
+    expect(view({ sort: 'price' })).toEqual([4, 1, 2, 99]); // 41,99 > 10 > 5
+    expect(view({ sort: 'price', reverse: true })).toEqual([2, 1, 4, 99]);
     expect(view({ sort: 'rating' }).indexOf(4)).toBeGreaterThan(view({ sort: 'rating' }).indexOf(1));
     expect(view({ sort: 'name' })).toEqual([1, 2, 4, 99]);
   });
-  it('sorts release dates chronologically and reverses any order; unavailable apps stay last', () => {
-    expect(view({ sort: 'release' })).toEqual([4, 1, 2, 99]); // Delta is older; 1 and 2 tie → by name
-    expect(view({ sort: 'release', reverse: true })).toEqual([2, 1, 4, 99]);
+  it('sorts release dates newest first and reverses any order; unavailable apps stay last', () => {
+    expect(view({ sort: 'release' })).toEqual([1, 2, 4, 99]); // Delta is older; 1 and 2 tie → by name
+    expect(view({ sort: 'release', reverse: true })).toEqual([4, 2, 1, 99]);
     expect(view({ sort: 'name', reverse: true })).toEqual([4, 2, 1, 99]);
     expect(view({ sort: 'wishlisted', reverse: true }).at(0)).not.toBe(2);
+  });
+  it('keeps games without a price or reviews last in both directions', () => {
+    const cheap = { formatted_final_price: '5€', final_price_in_cents: 500, discount_pct: 0 };
+    const extra = buildRows({
+      members: [member(VIEWER, true)],
+      wishlists: new Map([[VIEWER, [5, 6, 7].map((appid) => ({ appid, addedAt: 1 }))]]),
+      libraries: new Map(),
+      games: new Map([
+        [5, game(5, { name: 'Echo', best_purchase_option: undefined, reviews: undefined, release: {} })],
+        [6, game(6, { name: 'Fox' })],
+        [7, game(7, { name: 'Golf', best_purchase_option: cheap, release: { steam_release_date: 1500000000 } })],
+      ]),
+      viewer: { loggedIn: true, owned: [], wishlist: [] },
+    });
+    const v = (o: Partial<ViewOptions>) =>
+      applyView(extra, { sort: 'price', includeExtras: false, hideOwned: false, members: null, ...o }).map((r) => r.info.appid);
+    expect(v({})).toEqual([6, 7, 5]);
+    expect(v({ reverse: true })).toEqual([7, 6, 5]);
+    expect(v({ sort: 'rating' }).at(-1)).toBe(5);
+    expect(v({ sort: 'rating', reverse: true }).at(-1)).toBe(5);
+    // Without a date Steam says "Coming soon": that counts as the newest, so first, and last reversed.
+    expect(v({ sort: 'release' })).toEqual([5, 6, 7]);
+    expect(v({ sort: 'release', reverse: true })).toEqual([7, 6, 5]);
+  });
+  it('falls back to "most wishlisted" for an unknown sort option (old saved settings)', () => {
+    expect(view({ sort: 'bogus' as ViewOptions['sort'] })).toEqual(view({}));
   });
   it('hides games on the viewer\'s wishlist', () => {
     expect(view({ hideWishlisted: true })).toEqual([4, 99]);

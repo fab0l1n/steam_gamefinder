@@ -51,26 +51,36 @@ export function buildRows(input: AggregateInput): GameRow[] {
   return [...rows.values()];
 }
 
-export type SortKey = 'wishlisted' | 'discount' | 'price' | 'rating' | 'release' | 'name';
+export type SortKey = 'wishlisted' | 'owned' | 'interest' | 'discount' | 'price' | 'rating' | 'release' | 'name';
 
+/** The "Sort by" options, in dropdown order. */
 export const SORT_LABELS: Record<SortKey, string> = {
   wishlisted: 'Most wishlisted',
-  discount: 'Biggest discount',
-  price: 'Lowest price',
-  rating: 'Best rated',
+  owned: 'Most owned',
+  interest: 'Most wishlisted/owned',
+  discount: 'Discount',
+  price: 'Price',
+  rating: 'Reviews',
   release: 'Release date',
   name: 'Name',
 };
 
-/** What the order looks like: [normal (arrow down), reversed (arrow up)]. */
+/**
+ * How the list runs: [default (arrow down), reversed (arrow up)]. Every option starts with the
+ * biggest/newest/best first; Name starts with A–Z.
+ */
 export const SORT_ORDER: Record<SortKey, [string, string]> = {
   wishlisted: ['most wishlisted first', 'fewest wishlists first'],
+  owned: ['most owners first', 'fewest owners first'],
+  interest: ['most members first (wishlisted or owned)', 'fewest members first (wishlisted or owned)'],
   discount: ['biggest discount first', 'smallest discount first'],
-  price: ['lowest price first', 'highest price first'],
-  rating: ['best rated first', 'worst rated first'],
-  release: ['oldest first', 'newest first'],
+  price: ['highest price first', 'lowest price first'],
+  rating: ['best reviews first', 'worst reviews first'],
+  release: ['newest first', 'oldest first'],
   name: ['A–Z', 'Z–A'],
 };
+
+export const isSortKey = (k: unknown): k is SortKey => typeof k === 'string' && Object.hasOwn(SORT_LABELS, k);
 
 export interface ViewOptions {
   sort: SortKey;
@@ -99,19 +109,34 @@ export function isExtra(info: GameInfo): boolean {
 }
 
 const byName = (a: GameRow, b: GameRow) => a.info.name.localeCompare(b.info.name);
+const wished = (r: GameRow) => r.wishlistedBy.length;
+const owners = (r: GameRow) => r.ownedBy.length;
+/** Members who have the game on their wishlist or in their library, each counted once. */
+const interested = (r: GameRow) => new Set([...r.wishlistedBy, ...r.ownedBy].map((x) => x.steamid)).size;
 const discount = (r: GameRow) => r.info.price?.discountPct ?? 0;
-const rating = (r: GameRow) => (r.info.review ? r.info.review.score * 1e9 + r.info.review.percent * 1e7 + r.info.review.count : -1);
-const release = (r: GameRow) => r.info.releaseDate ?? (r.info.comingSoon ? Number.MAX_SAFE_INTEGER : 0);
-const price = (r: GameRow) => r.info.price?.finalCents ?? Number.MAX_SAFE_INTEGER;
+const price = (r: GameRow) => r.info.price?.finalCents ?? null;
+const rating = (r: GameRow) => (r.info.review ? r.info.review.score * 1e9 + r.info.review.percent * 1e7 + r.info.review.count : null);
+/** Undated "coming soon" games count as the newest; undated released ones have no date to sort by. */
+const release = (r: GameRow) => r.info.releaseDate ?? (r.info.comingSoon ? Number.MAX_SAFE_INTEGER : null);
+const desc = (f: (r: GameRow) => number | null) => (a: GameRow, b: GameRow) => (f(b) ?? 0) - (f(a) ?? 0);
 
+/** The default (arrow down) order of each option; the arrow reverses it as a whole. */
 const comparators: Record<SortKey, (a: GameRow, b: GameRow) => number> = {
-  wishlisted: (a, b) => b.wishlistedBy.length - a.wishlistedBy.length || discount(b) - discount(a) || byName(a, b),
-  discount: (a, b) => discount(b) - discount(a) || b.wishlistedBy.length - a.wishlistedBy.length || byName(a, b),
-  price: (a, b) => price(a) - price(b) || byName(a, b),
-  rating: (a, b) => rating(b) - rating(a) || byName(a, b),
-  // Chronological; undated "coming soon" games count as the newest.
-  release: (a, b) => release(a) - release(b) || byName(a, b),
+  wishlisted: (a, b) => desc(wished)(a, b) || desc(discount)(a, b) || byName(a, b),
+  owned: (a, b) => desc(owners)(a, b) || desc(wished)(a, b) || byName(a, b),
+  interest: (a, b) => desc(interested)(a, b) || desc(wished)(a, b) || byName(a, b),
+  discount: (a, b) => desc(discount)(a, b) || desc(wished)(a, b) || byName(a, b),
+  price: (a, b) => desc(price)(a, b) || byName(a, b),
+  rating: (a, b) => desc(rating)(a, b) || byName(a, b),
+  release: (a, b) => desc(release)(a, b) || byName(a, b),
   name: byName,
+};
+
+/** Games with nothing to sort by for an option (no price, no reviews, no date) go last either way. */
+const lacks: Partial<Record<SortKey, (r: GameRow) => boolean>> = {
+  price: (r) => price(r) == null,
+  rating: (r) => rating(r) == null,
+  release: (r) => release(r) == null,
 };
 
 export function applyView(rows: GameRow[], opts: ViewOptions): GameRow[] {
@@ -123,8 +148,16 @@ export function applyView(rows: GameRow[], opts: ViewOptions): GameRow[] {
       (!opts.members ||
         (opts.matchAll ? opts.members.every((id) => memberHas(r, id)) : opts.members.some((id) => memberHas(r, id)))),
   );
-  const cmp = comparators[opts.sort];
+  const key = isSortKey(opts.sort) ? opts.sort : 'wishlisted';
+  const cmp = comparators[key];
+  const lacking = lacks[key] ?? (() => false);
   const dir = opts.reverse ? -1 : 1;
-  // Apps that vanished from the store always go last, in either direction.
-  return filtered.sort((a, b) => Number(!a.info.available) - Number(!b.info.available) || dir * cmp(a, b));
+  // Apps that vanished from the store go last, then games without a value for this option;
+  // both stay at the bottom in either direction.
+  return filtered.sort(
+    (a, b) =>
+      Number(!a.info.available) - Number(!b.info.available) ||
+      Number(lacking(a)) - Number(lacking(b)) ||
+      dir * cmp(a, b),
+  );
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { applyView, SORT_LABELS, SORT_ORDER, type SortKey } from '../lib/aggregate';
+  import { applyView, isSortKey, SORT_LABELS, SORT_ORDER, type SortKey } from '../lib/aggregate';
   import { EMPTY_FILTERS, filtersActive, matchesFilters, priceFormatter, priceSteps, releaseYears, type Filters } from '../lib/filters';
   import { DEFAULT_SETTINGS, type DataSource, type UiSettings } from '../lib/source';
   import type { GameRow, LoadSnapshot, Member } from '../lib/types';
@@ -154,6 +154,7 @@
     const tick = setInterval(() => (now = Date.now()), 30_000);
     source.getSettings().then((s) => {
       settings = { ...DEFAULT_SETTINGS, ...s };
+      if (!isSortKey(settings.sort)) settings.sort = DEFAULT_SETTINGS.sort;
       settingsReady = true;
       run(false);
     });
@@ -204,7 +205,8 @@
     <span class="sort">
       <label>
         Sort by
-        <select bind:value={settings.sort}>
+        <!-- A newly picked option starts in its default direction. -->
+        <select bind:value={settings.sort} onchange={() => (settings.sortReverse = false)}>
           {#each sortKeys as k (k)}<option value={k}>{SORT_LABELS[k]}</option>{/each}
         </select>
       </label>

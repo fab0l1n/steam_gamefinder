@@ -43,9 +43,11 @@ everyone wants, what's on sale, and who already owns it.
   it since when, who owns it and how long they played. Screenshots use Steam's 600×338 variants (the
   originals are up to 3840 px); the first one is loaded before the preview opens (waits 1.2 s at most).
   Loaded screenshots are remembered in memory for the page session only, nothing is stored.
-- **Sorting** (most wishlisted, discount, price, rating, release date, name). The arrow next to *Sort by*
-  reverses the order (↓ normal, ↑ reversed; the tooltip says which way it runs). Release date runs oldest →
-  newest with ↓ and newest first with ↑; undated upcoming games count as the newest.
+- **Sorting**: most wishlisted, most owned, most wishlisted/owned (members who have it either way, each
+  counted once), discount, price, reviews, release date, name. Each starts with the biggest / highest /
+  best / newest first (name: A–Z); the arrow next to *Sort by* reverses it (↓ default, ↑ reversed; the
+  tooltip says which way it runs), and picking another option starts it at its default again. Games without
+  a price or reviews stay at the bottom either way; undated upcoming games count as the newest.
 - **Filter sidebar** like Steam search with Augmented Steam; every section collapses (remembered; a dot
   marks a collapsed section that still filters): review score range, review count, discount
   percent, price range (two knobs), release date (From/To: a year or *Today*; undated "To be announced" /
