@@ -222,7 +222,7 @@
 
   <!-- Below the last section, so it appearing doesn't move anything. -->
   {#if anyActive}
-    <div class="clearrow"><button class="clear" onclick={clearAll}>Clear all</button></div>
+    <div class="clearrow"><button class="clear" onclick={clearAll}>Clear filter</button></div>
   {/if}
 </aside>
 

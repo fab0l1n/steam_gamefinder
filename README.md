@@ -54,7 +54,7 @@ everyone wants, what's on sale, and who already owns it.
   "Coming soon" games count as future releases, so they stay in with only *From* set and drop out once
   *To* is set; To = *Any* keeps every dated game), user tags (tick to require, `−` to exclude; counts update
   with the other filters), and last the content options: include DLC & hardware, hide games you own, hide
-  games on your wishlist. *Clear all* (below the last section) resets all of them.
+  games on your wishlist. *Clear filter* (below the last section) resets all of them.
   The view is wider than Steam's group column (up to 1240 px) to fit the sidebar; below 1100 px the
   filters move above the list.
 
