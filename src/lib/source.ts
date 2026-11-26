@@ -10,6 +10,8 @@ export interface UiSettings {
   loadLibraries: boolean;
   /** Debug log panel expanded. */
   debugOpen: boolean;
+  /** Member filter: false = games any selected member has, true = games all of them have. */
+  matchAll: boolean;
 }
 
 export const DEFAULT_SETTINGS: UiSettings = {
@@ -18,6 +20,7 @@ export const DEFAULT_SETTINGS: UiSettings = {
   hideOwned: false,
   loadLibraries: true,
   debugOpen: false,
+  matchAll: false,
 };
 
 export interface DataSource {

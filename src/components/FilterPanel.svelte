@@ -1,6 +1,6 @@
 <script lang="ts">
   /** Right-hand filter sidebar, modelled on Steam search with Augmented Steam's extra filters. */
-  import { EMPTY_FILTERS, filtersActive, priceLabel, releaseLabel, tagCounts, type Filters } from '../lib/filters';
+  import { boundEnd, boundStart, EMPTY_FILTERS, filtersActive, priceLabel, releaseLabel, tagCounts, type Filters, type ReleaseBound } from '../lib/filters';
   import type { GameRow } from '../lib/types';
 
   let {
@@ -61,15 +61,20 @@
       filters.priceMaxCents = steps[idx] === Infinity ? null : steps[idx];
     }
   }
+  const bound = (v: string): ReleaseBound | null => (v === '' ? null : v === 'today' ? 'today' : Number(v));
+  /** True when "from" starts after "to" ends; the field just changed wins and the other follows. */
+  const crossed = (from: ReleaseBound | null, to: ReleaseBound | 'any' | null) =>
+    from != null && to != null && to !== 'any' && boundStart(from) >= boundEnd(to);
+
   function setReleaseFrom(v: string) {
-    const y = v === '' ? null : Number(v);
-    filters.releaseFrom = y;
-    if (y != null && typeof filters.releaseTo === 'number' && filters.releaseTo < y) filters.releaseTo = y;
+    const from = bound(v);
+    filters.releaseFrom = from;
+    if (crossed(from, filters.releaseTo)) filters.releaseTo = from;
   }
   function setReleaseTo(v: string) {
-    const to = v === '' ? null : v === 'any' ? 'any' : Number(v);
+    const to = v === 'any' ? 'any' : bound(v);
     filters.releaseTo = to;
-    if (typeof to === 'number' && filters.releaseFrom != null && filters.releaseFrom > to) filters.releaseFrom = to;
+    if (to !== 'any' && crossed(filters.releaseFrom, to)) filters.releaseFrom = to;
   }
 
   function toggleInclude(t: number) {
@@ -143,6 +148,7 @@
           <span>From</span>
           <select value={filters.releaseFrom == null ? '' : String(filters.releaseFrom)} onchange={(e) => setReleaseFrom(e.currentTarget.value)}>
             <option value="">—</option>
+            <option value="today">Today</option>
             {#each years as y (y)}<option value={String(y)}>{y}</option>{/each}
           </select>
         </label>
@@ -153,6 +159,7 @@
             title={'"Any": any release date, but hides "To be announced" and "Coming soon"'}>
             <option value="">—</option>
             <option value="any">Any</option>
+            <option value="today">Today</option>
             {#each years as y (y)}<option value={String(y)}>{y}</option>{/each}
           </select>
         </label>

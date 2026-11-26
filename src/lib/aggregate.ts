@@ -67,8 +67,15 @@ export interface ViewOptions {
   /** Show DLC, hardware, soundtracks, demos etc. */
   includeExtras: boolean;
   hideOwned: boolean;
-  /** Only games at least one of these members wishlisted or owns; null = everyone. */
+  /** Only games these members wishlisted or own; null = no member filter. */
   members: SteamId[] | null;
+  /** false = any of `members` (default), true = every one of them. */
+  matchAll?: boolean;
+}
+
+/** The member has the game on their wishlist or in their library. */
+export function memberHas(r: GameRow, id: SteamId): boolean {
+  return r.wishlistedBy.some((w) => w.steamid === id) || r.ownedBy.some((o) => o.steamid === id);
 }
 
 const MAIN_TYPES = new Set<number>([StoreAppType.Game, StoreAppType.Software]);
@@ -98,8 +105,7 @@ export function applyView(rows: GameRow[], opts: ViewOptions): GameRow[] {
       (opts.includeExtras || !isExtra(r.info)) &&
       (!opts.hideOwned || !r.viewerOwns) &&
       (!opts.members ||
-        r.wishlistedBy.some((w) => opts.members!.includes(w.steamid)) ||
-        r.ownedBy.some((o) => opts.members!.includes(o.steamid))),
+        (opts.matchAll ? opts.members.every((id) => memberHas(r, id)) : opts.members.some((id) => memberHas(r, id)))),
   );
   const cmp = comparators[opts.sort];
   // Apps that vanished from the store always go last.

@@ -57,7 +57,7 @@ describe('filters', () => {
     expect(ids({ tagsExclude: [3] })).toEqual([1, 4]);
     expect(rows.filter((r) => matchesFilters(r, { ...EMPTY_FILTERS, tagsInclude: [9] }, { ignoreTags: true }))).toHaveLength(4);
   });
-  it('filters by release year; "Any" drops undated (TBA / coming soon) games', () => {
+  it('filters by release year; undated games pass a lower bound but no upper bound', () => {
     const dated = [
       row(10, { release: { steam_release_date: Date.UTC(2019, 5, 1) / 1000 } }),
       row(11, { release: { steam_release_date: Date.UTC(2023, 7, 3) / 1000 } }),
@@ -67,10 +67,28 @@ describe('filters', () => {
     const pick = (f: Partial<Filters>) => dated.filter((r) => matchesFilters(r, { ...EMPTY_FILTERS, ...f })).map((r) => r.info.appid);
     expect(pick({})).toEqual([10, 11, 12, 13]);
     expect(pick({ releaseTo: 'any' })).toEqual([10, 11, 12]);
-    expect(pick({ releaseFrom: 2020 })).toEqual([11, 12]);
+    expect(pick({ releaseFrom: 2020 })).toEqual([11, 12, 13]);
+    expect(pick({ releaseFrom: 2020, releaseTo: 'any' })).toEqual([11, 12]);
     expect(pick({ releaseTo: 2023 })).toEqual([10, 11]);
     expect(pick({ releaseFrom: 2020, releaseTo: 2023 })).toEqual([11]);
     expect(filtersActive({ ...EMPTY_FILTERS, releaseTo: 'any' })).toBe(true);
+  });
+
+  it('supports "today" on both ends', () => {
+    const now = new Date(2026, 10, 26, 15, 0).getTime(); // 26 Nov 2026, 15:00 local
+    const at = (y: number, m: number, d: number, h = 12) => Math.floor(new Date(y, m, d, h).getTime() / 1000);
+    const games = [
+      row(30, { release: { steam_release_date: at(2026, 10, 25) } }), // yesterday
+      row(31, { release: { steam_release_date: at(2026, 10, 26, 9) } }), // today, earlier than now
+      row(32, { release: { is_coming_soon: true, coming_soon_display: 'date_full', steam_release_date: at(2026, 10, 27) } }), // tomorrow
+      row(33, { release: { is_coming_soon: true, coming_soon_display: 'text_tba', custom_release_date_message: 'To be announced' } }),
+    ];
+    const pick = (f: Partial<Filters>) => games.filter((r) => matchesFilters(r, { ...EMPTY_FILTERS, ...f }, { now })).map((r) => r.info.appid);
+    expect(pick({ releaseFrom: 'today' })).toEqual([31, 32, 33]);
+    expect(pick({ releaseFrom: 'today', releaseTo: 'any' })).toEqual([31, 32]);
+    expect(pick({ releaseTo: 'today' })).toEqual([30, 31]);
+    expect(pick({ releaseFrom: 'today', releaseTo: 'today' })).toEqual([31]);
+    expect(pick({ releaseFrom: 2026, releaseTo: 'today' })).toEqual([30, 31]);
   });
 
   it('lists release years and labels the range', async () => {
@@ -79,9 +97,13 @@ describe('filters', () => {
     expect(ys).toEqual([2026, 2019]);
     expect(releaseLabel(null, null)).toBe('Any release date');
     expect(releaseLabel(null, 'any')).toBe('Any date, no "To be announced"');
-    expect(releaseLabel(2020, null)).toBe('2020 or later');
+    expect(releaseLabel(2020, null)).toBe('2020 or later, incl. unannounced');
+    expect(releaseLabel(2020, 'any')).toBe('2020 or later, dated only');
     expect(releaseLabel(null, 2023)).toBe('Up to 2023');
     expect(releaseLabel(2020, 2023)).toBe('2020 – 2023');
+    expect(releaseLabel('today', null)).toBe('Today or later, incl. unannounced');
+    expect(releaseLabel(null, 'today')).toBe('Released up to today');
+    expect(releaseLabel(2025, 'today')).toBe('2025 – Today');
   });
 
   it('counts tags, most common first', () => {

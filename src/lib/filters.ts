@@ -15,10 +15,32 @@ export interface Filters {
   priceMaxCents: number | null;
   tagsInclude: number[];
   tagsExclude: number[];
-  /** Release year from (inclusive); null = no lower bound. */
-  releaseFrom: number | null;
-  /** Release year up to (inclusive); 'any' = any date but no "To be announced"/"Coming soon"; null = no filter. */
-  releaseTo: number | 'any' | null;
+  /** Release from (inclusive): a year or 'today'; null = no lower bound. */
+  releaseFrom: number | 'today' | null;
+  /**
+   * Release up to (inclusive): a year or 'today'; 'any' = any date but no "To be announced" /
+   * "Coming soon"; null = no upper bound (undated games stay in).
+   */
+  releaseTo: number | 'today' | 'any' | null;
+}
+
+export type ReleaseBound = number | 'today';
+
+const DAY = 24 * 60 * 60 * 1000;
+function startOfToday(now: number): number {
+  const d = new Date(now);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+/** First millisecond a bound covers (a year starts 1 Jan UTC; today starts at local midnight). */
+export function boundStart(b: ReleaseBound, now = Date.now()): number {
+  return b === 'today' ? startOfToday(now) : Date.UTC(b, 0, 1);
+}
+
+/** First millisecond after a bound. */
+export function boundEnd(b: ReleaseBound, now = Date.now()): number {
+  return b === 'today' ? startOfToday(now) + DAY : Date.UTC(b + 1, 0, 1);
 }
 
 export const EMPTY_FILTERS: Filters = {
@@ -53,7 +75,7 @@ export function filtersActive(f: Filters): boolean {
   );
 }
 
-export function matchesFilters(row: GameRow, f: Filters, opts: { ignoreTags?: boolean } = {}): boolean {
+export function matchesFilters(row: GameRow, f: Filters, opts: { ignoreTags?: boolean; now?: number } = {}): boolean {
   const { review, price, tagids } = row.info;
 
   if (f.reviewMin > 0 || f.reviewMax < 100) {
@@ -73,12 +95,17 @@ export function matchesFilters(row: GameRow, f: Filters, opts: { ignoreTags?: bo
   }
 
   if (f.releaseFrom != null || f.releaseTo != null) {
-    // Any release bound needs a date: "To be announced" and "Coming soon" drop out.
+    const now = opts.now ?? Date.now();
     const d = row.info.releaseDate;
-    if (d == null) return false;
-    const year = new Date(d * 1000).getUTCFullYear();
-    if (f.releaseFrom != null && year < f.releaseFrom) return false;
-    if (typeof f.releaseTo === 'number' && year > f.releaseTo) return false;
+    if (d == null) {
+      // Undated ("To be announced", "Coming soon") counts as a future release: it passes a lower
+      // bound, but any upper bound (a year, today or "Any") drops it.
+      if (!row.info.comingSoon || f.releaseTo != null) return false;
+    } else {
+      const t = d * 1000;
+      if (f.releaseFrom != null && t < boundStart(f.releaseFrom, now)) return false;
+      if (f.releaseTo != null && f.releaseTo !== 'any' && t >= boundEnd(f.releaseTo, now)) return false;
+    }
   }
 
   if (!opts.ignoreTags) {
@@ -134,10 +161,12 @@ export function releaseYears(rows: GameRow[], now = Date.now()): number[] {
   return [...ys].sort((a, b) => b - a);
 }
 
-export function releaseLabel(from: number | null, to: number | 'any' | null): string {
+export function releaseLabel(from: ReleaseBound | null, to: ReleaseBound | 'any' | null): string {
+  const name = (b: ReleaseBound) => (b === 'today' ? 'Today' : String(b));
   if (from == null && to == null) return 'Any release date';
   if (from == null && to === 'any') return 'Any date, no "To be announced"';
-  if (from == null) return `Up to ${to}`;
-  if (to == null || to === 'any') return `${from} or later`;
-  return from === to ? `${from}` : `${from} – ${to}`;
+  if (from == null) return to === 'today' ? 'Released up to today' : `Up to ${to}`;
+  if (to == null) return `${name(from)} or later, incl. unannounced`;
+  if (to === 'any') return `${name(from)} or later, dated only`;
+  return from === to ? name(from) : `${name(from)} – ${name(to)}`;
 }

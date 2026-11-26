@@ -33,12 +33,23 @@
   const allIds = $derived((snap?.members ?? []).map((m) => m.steamid));
   const effective = $derived(selection.length ? allIds.filter((id) => selection.includes(id)) : allIds);
   const allSelected = $derived(effective.length === 0 || isAllSelected(effective, allIds));
+  /** "Vitu and Kai both", "A, B and C all", "all 7 members" for the "All" summary. */
+  const allPhrase = $derived.by(() => {
+    if (allSelected) return `all ${allIds.length} members`;
+    const names = effective.map((id) => members.get(id)?.name ?? id);
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} and ${names[1]} both`;
+    const shown = names.length > 4 ? [...names.slice(0, 3), `${names.length - 3} more`] : names;
+    return `${shown.slice(0, -1).join(', ')} and ${shown.at(-1)} all`;
+  });
   const selectedNames = $derived.by(() => {
     const names = effective.map((id) => members.get(id)?.name ?? id);
     return names.length > 3 ? `${names.slice(0, 3).join(', ')} +${names.length - 3}` : names.join(', ');
   });
   /** Sorted rows after the toolbar options and member filter. */
-  const baseRows = $derived(snap ? applyView(snap.rows, { ...settings, members: allSelected ? null : effective }) : []);
+  // "Any" with everyone selected needs no filter; "All" with everyone selected = games every member has.
+  const memberFilterIds = $derived(settings.matchAll ? (allSelected ? allIds : effective) : allSelected ? null : effective);
+  const baseRows = $derived(snap ? applyView(snap.rows, { ...settings, members: memberFilterIds }) : []);
   /** Rows for the tag counts: every sidebar filter except tags. */
   const tagRows = $derived(baseRows.filter((r) => matchesFilters(r, filters, { ignoreTags: true })));
   const rows = $derived(tagRows.filter((r) => matchesFilters(r, filters)));
@@ -139,6 +150,8 @@
       selected={effective}
       {allSelected}
       {presets}
+      matchAll={settings.matchAll}
+      ontogglematch={() => (settings.matchAll = !settings.matchAll)}
       onselect={(id, additive) => select(clickMember(effective, id, additive, allIds))}
       onall={() => select([])}
       onpreset={(p) => select(presetSelection(p, allIds))}
@@ -168,7 +181,10 @@
     {#if !snap}
       Starting…
     {:else if snap.phase === 'done'}
-      {#if !allSelected}
+      {#if settings.matchAll}
+        Showing {rows.length} games that {allPhrase} have on their wishlist or in their library
+        {#if !allSelected}· <button class="link" onclick={() => select([])}>show all</button>{/if}
+      {:else if !allSelected}
         Showing {rows.length} games wishlisted or owned by {selectedNames} ·
         <button class="link" onclick={() => select([])}>show all</button>
       {:else}
